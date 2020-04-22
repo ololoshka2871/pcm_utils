@@ -63,6 +63,8 @@ struct LineInfo {
 
 	LineInfo() = default;
 
+	Resut result;
+
 	int32_t offset_start;
 	int32_t offset_end;
 	double pixel_per_bit;
@@ -70,7 +72,6 @@ struct LineInfo {
 	int32_t treshold;
 	uint32_t line;
 	uint32_t trys;
-	Resut success;
 };
 
 class SingleLinePlocessor {
@@ -81,7 +82,7 @@ public:
 		threshold(threshold), lineinfo(lineinfo) {}
 
 	void execute() {
-		uint8_t bytes[BYTES_PER_PCM_STRING];
+		uint8_t bytes[DATA_BYTES_PER_PCM_STRING];
 
 		TresholdProvider initialThreshold(threshold);
 
@@ -92,15 +93,15 @@ public:
 
 		if (!res) {
 			fail_result(initialThreshold);
-			lineinfo->success = LineInfo::NoData;
+			lineinfo->result = LineInfo::NoData;
 			return; // FAIL!
 		}
 
-		lineinfo->success = LineInfo::Error;
+		lineinfo->result = LineInfo::Error;
 
 		for (;;) {
 			if (res && (0 == crc16_ccitt(bytes, sizeof(bytes)))) {
-				lineinfo->success = LineInfo::Success;
+				lineinfo->result = LineInfo::Success;
 				lineinfo->trys = threshold.step() + 1;
 				break; // SUCCESS!
 			}
@@ -124,17 +125,17 @@ public:
 		PCMPixelReader reader;
 
 		if (!detectct_syncro(reader)) {
-			lineinfo->success = LineInfo::NoData;
+			lineinfo->result = LineInfo::NoData;
 			lineinfo->trys = 1;
 			return;
 		}
 
 		const std::vector<uint8_t> initial_binarisation_result(binarization_buff, &binarization_buff[width]);
-		lineinfo->success = LineInfo::Error;
+		lineinfo->result = LineInfo::Error;
 		for (;;) {
 			read_string(bytes, reader);
 			if (0 == crc16_ccitt(bytes, sizeof(bytes))) {
-				lineinfo->success = LineInfo::Success;
+				lineinfo->result = LineInfo::Success;
 				lineinfo->trys = threshold.step() + 1;
 				break; // SUCCESS!
 			}
@@ -367,7 +368,7 @@ extern "C" __declspec(dllexport) void ProcessFrameAutolevel(
 	std::for_each(lines_info.cbegin(), lines_info.cend(), [&sum_trys, &success_lines, &summ_offset_start, &summ_offset_end, &summ_pixel_per_bit,
 		first_pcm_line, last_pcm_line](const LineInfo &result) {
 		sum_trys += result.trys;
-		if (result.success != LineInfo::NoData) {
+		if (result.result != LineInfo::NoData) {
 			++success_lines;
 			summ_offset_start += result.offset_start;
 			summ_offset_end += result.offset_end;
@@ -379,7 +380,7 @@ extern "C" __declspec(dllexport) void ProcessFrameAutolevel(
 
 			*last_pcm_line = -1;
 		}
-		else if ((*last_pcm_line < 0) && (result.success == LineInfo::NoData)) {
+		else if ((*last_pcm_line < 0) && (result.result == LineInfo::NoData)) {
 			*last_pcm_line = result.line;
 		}
 	});
@@ -418,7 +419,7 @@ extern "C" __declspec(dllexport) void ProcessFrame(
 	std::vector<uint8_t> binarisation_storage(width * heigth);
 
 	myTwoDimArray<uint8_t> indata(frame_data, width, heigth);
-	myTwoDimArray<uint8_t> outdata(out_data, BYTES_PER_PCM_STRING * CHAR_BIT, heigth);
+	myTwoDimArray<uint8_t> outdata(out_data, DATA_BYTES_PER_PCM_STRING * CHAR_BIT, heigth);
 	myTwoDimArray<uint8_t> binarisation_buf(binarisation_storage.data(), width, heigth);
 
 	// paralel
@@ -448,7 +449,7 @@ extern "C" __declspec(dllexport) void ProcessFrame(
 	std::for_each(lines_info.cbegin(), lines_info.cend(), [&sum_trys, &success_lines, &summ_offset_start, &summ_offset_end, &summ_pixel_per_bit,
 		first_pcm_line, last_pcm_line](const LineInfo &result) {
 		sum_trys += result.trys;
-		if (result.success != LineInfo::NoData) {
+		if (result.result != LineInfo::NoData) {
 			++success_lines;
 			summ_offset_start += result.offset_start;
 			summ_offset_end += result.offset_end;
@@ -460,7 +461,7 @@ extern "C" __declspec(dllexport) void ProcessFrame(
 
 			*last_pcm_line = -1;
 		}
-		else if ((*last_pcm_line < 0) && (result.success == LineInfo::NoData)) {
+		else if ((*last_pcm_line < 0) && (result.result == LineInfo::NoData)) {
 			*last_pcm_line = result.line;
 		}
 	});
