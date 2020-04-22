@@ -56,3 +56,12 @@ extern "C" __declspec(dllexport) uint8_t AdvancedComparatorBoolOut(uint8_t *data
 	/* out */ int32_t *offset_start1,
 	/* out */ int32_t *offset_end,
 	/* out */ double *pixel_per_bit);
+
+extern "C" __declspec(dllexport) void ComparatorBaseBoolOut(uint8_t *data, int32_t size,
+	int32_t offset_start,
+	int32_t offset_end,
+	double pixel_per_bit,
+	/* out */ uint8_t bytes[DATA_OUT_BYTES],
+	/* out */ void *bits, /*[DATA_OUT_BYTES * 8]*/
+	/* out */ uint64_t *indexes /*[DATA_OUT_BYTES * 8]*/
+);

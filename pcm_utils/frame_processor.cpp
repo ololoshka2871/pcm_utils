@@ -144,8 +144,17 @@ public:
 				lineinfo->trys = threshold.maximum();
 				break; // FAIL!
 			}
-
-			binarize(threshold.value());
+			while(1) {
+				binarize(threshold.value());
+				if (detectct_syncro(reader)) {
+					break;
+				}
+				else if (!threshold.next()) {
+					std::copy(initial_binarisation_result.cbegin(), initial_binarisation_result.cend(), binarization_buff);
+					lineinfo->trys = threshold.maximum();
+					break; // FAIL!
+				}
+			}
 		}
 	}
 
@@ -166,7 +175,19 @@ private:
 		}
 
 		uint8_t value(uint8_t npixel) const {
-			auto base_offset = uint32_t(round(bpp * (npixel + 0.5))) + 1;
+			auto base_offset = uint32_t(round(bpp * npixel + 0.5)) + 1;
+
+			auto v = 0;
+			for (auto i = -1; i < 2; ++i) {
+				v += buff[base_offset + i];
+			}
+			return v > 1;
+		}
+
+		uint8_t value(uint8_t npixel, uint64_t* index) const {
+			auto base_offset = uint32_t(round(bpp * npixel + 0.5)) + 1;
+
+			*index = (uint64_t)&buff[base_offset - 1];
 
 			auto v = 0;
 			for (auto i = -1; i < 2; ++i) {
@@ -181,10 +202,20 @@ private:
 	};
 
 	void read_string(uint8_t* bytes, const PCMPixelReader& reader) {
+/*
+		uint64_t indexes_a[DATA_BYTES_PER_PCM_STRING * CHAR_BIT];
+		uint64_t indexes_b[DATA_BYTES_PER_PCM_STRING * CHAR_BIT];
+		
+		std::memset(bytes, 0, DATA_BYTES_PER_PCM_STRING);
+
+		ComparatorBaseBoolOut(binarization_buff, width, lineinfo->offset_start, 
+			lineinfo->offset_end, lineinfo->pixel_per_bit, bytes, out_line, indexes_a);
+			
+*/
 		std::memset(bytes, 0, DATA_BYTES_PER_PCM_STRING);
 
 		for (auto i = 0; i < DATA_BYTES_PER_PCM_STRING * CHAR_BIT; ++i) {
-			auto v = out_line[i] = reader.value(i);
+			auto v = out_line[i] = reader.value(i/*, &indexes_b[i]*/);
 			if (v) {
 				bytes[i >> 3] |= 1 << (7 - i % 8);
 			}
@@ -239,6 +270,12 @@ private:
 
 		auto sync2_search = sync1_end;
 		++sync2_search;
+
+		auto sync2_start = find_it_if(sync2_search, first_sync_end, raising_detect);
+		if (sync1_end == first_sync_end) {
+			return false;
+		}
+			
 		auto sync2_end = find_it_if(sync2_search, first_sync_end, falling_detect);
 		if (sync1_end == first_sync_end) {
 			return false;
@@ -264,25 +301,52 @@ private:
 
 		//---------------------------------------------------------------------------------------
 
-		std::advance(white_level_fall, sync_line_width + 1);
-		std::advance(sync2_end, sync_line_width + 1);
+		const auto sync1_end_off = sync1_end.start_offset();
+		const auto sync2_start_offset = sync2_start.start_offset();
+		auto sync_zero_size = sync2_start_offset - sync1_end_off;
 
-		auto pixel_pre_pcm_bit = (white_level_fall.start_offset() - sync2_end.start_offset()) /
-			(double)(DATA_BYTES_PER_PCM_STRING * CHAR_BIT);
+#if 0
+		{
+			auto sync1_start_off = sync1_start.start_offset();
+			auto sync1_end_off = sync1_end.start_offset();
+			auto sync1_size = sync1_end_off - sync1_start_off;
+
+			auto sync2_start_offset = sync2_start.start_offset();
+			auto sync_zero_size = sync2_start_offset - sync1_end_off;
+			auto sync2_end_offset = sync2_end.start_offset();
+
+			auto ender_start_offset = white_level_adge.start_offset();
+			auto ender_end_offset = white_level_fall.start_offset();
+			auto ender_size = ender_start_offset - ender_end_offset;
+
+			auto offset_start = sync2_end_offset + sync_zero_size + 1;
+			auto offset_end = ender_end_offset - sync_zero_size;
+
+			auto data_pixels_count = offset_end - offset_start;
+
+			printf("%d", sync1_start_off, sync1_end_off, sync1_size, sync2_start_offset, sync_zero_size, sync2_end_offset,
+				ender_start_offset, ender_end_offset, ender_size, offset_start, offset_end, data_pixels_count);
+		}
+#endif
+
+		std::advance(white_level_fall, sync_zero_size);
+		std::advance(sync2_end, sync_zero_size + 1);
+
+		const auto data_pixels_count = white_level_fall.start_offset() - sync2_end.start_offset();
+		const auto pixel_pre_pcm_bit = data_pixels_count / (double)(DATA_BYTES_PER_PCM_STRING * CHAR_BIT);
 
 		if (pixel_pre_pcm_bit < 3.0) {
 			return false;
 		}
 
-		reader.configure(&binarization_buff[sync1_start.start_offset()], pixel_pre_pcm_bit);
+		reader.configure(&binarization_buff[sync1_start.start_offset() + 1], pixel_pre_pcm_bit);
 
 		static constexpr std::pair<int32_t, bool> reference[]{
 			{0, true}, {1, false}, {2, true}, {3, false},
 			// DATA_BYTES_PER_PCM_STRING_BITS
 			// { 4 + 0...
 			// { 4 + DATA_BYTES_PER_PCM_STRING_BITS - 1...
-			{4 + DATA_BYTES_PER_PCM_STRING_BITS, false},
-			{4 + DATA_BYTES_PER_PCM_STRING_BITS + 1, true}, {4 + DATA_BYTES_PER_PCM_STRING_BITS + 2, true},
+			{4 + DATA_BYTES_PER_PCM_STRING_BITS + 2, true},
 			{4 + DATA_BYTES_PER_PCM_STRING_BITS + 3, true}, {4 + DATA_BYTES_PER_PCM_STRING_BITS + 4, true}
 		};
 
@@ -295,7 +359,7 @@ private:
 		lineinfo->offset_end = white_level_fall.start_offset();
 		lineinfo->pixel_per_bit = pixel_pre_pcm_bit;
 
-		reader.configure(&binarization_buff[sync2_end.start_offset() + sync_line_width], pixel_pre_pcm_bit);
+		reader.configure(&binarization_buff[sync2_end.start_offset() + 1], pixel_pre_pcm_bit);
 
 		return true;
 	}
@@ -313,13 +377,14 @@ extern "C" __declspec(dllexport) void ProcessFrameAutolevel(
 	/* out */ int32_t *tracking,
 
 	/* out */ int32_t *first_pcm_line,
-	/* out */ int32_t *last_pcm_line
+	/* out */ int32_t *last_pcm_line,
+	/* out */ int32_t *error_lines
 ) {
 	std::vector<LineInfo> lines_info(heigth);
 	std::vector<uint8_t> binarisation_storage(width * heigth);
 
 	myTwoDimArray<uint8_t> indata(frame_data, width, heigth);
-	myTwoDimArray<uint8_t> outdata(out_data, BYTES_PER_PCM_STRING * CHAR_BIT, heigth);
+	myTwoDimArray<uint8_t> outdata(out_data, DATA_BYTES_PER_PCM_STRING * CHAR_BIT, heigth);
 	myTwoDimArray<uint8_t> binarisation_buf(binarisation_storage.data(), width, heigth);
 
 	// paralel
@@ -342,7 +407,7 @@ extern "C" __declspec(dllexport) void ProcessFrameAutolevel(
 
 	auto threshold_index = hystogramm_find_minimum_index(histogramm_data, maximums[1], maximums[0]);
 
-	auto range = (histogramm_thresholds[maximums[1]] - histogramm_thresholds[maximums[0]]) / 2;
+	auto range = (histogramm_thresholds[maximums[1]] - histogramm_thresholds[maximums[0]]) / 4;
 
 	TresholdProvider initial_tresholdProvider(histogramm_thresholds[threshold_index], range);
 
@@ -360,14 +425,20 @@ extern "C" __declspec(dllexport) void ProcessFrameAutolevel(
 	*first_pcm_line = -1;
 	*last_pcm_line = -1;
 
-	int success_lines = 0;
+	uint32_t success_lines = 0;
+	int32_t _error_lines = 0;
 	int64_t summ_offset_start = 0;
 	int64_t summ_offset_end = 0;
 	double summ_pixel_per_bit = 0;
 	double sum_trys = 0;
-	std::for_each(lines_info.cbegin(), lines_info.cend(), [&sum_trys, &success_lines, &summ_offset_start, &summ_offset_end, &summ_pixel_per_bit,
+	std::for_each(lines_info.cbegin(), lines_info.cend(), [&sum_trys, &success_lines, &_error_lines, &summ_offset_start, &summ_offset_end, &summ_pixel_per_bit,
 		first_pcm_line, last_pcm_line](const LineInfo &result) {
 		sum_trys += result.trys;
+
+		if (result.result == LineInfo::Error) {
+			++_error_lines;
+		}
+
 		if (result.result != LineInfo::NoData) {
 			++success_lines;
 			summ_offset_start += result.offset_start;
@@ -388,6 +459,7 @@ extern "C" __declspec(dllexport) void ProcessFrameAutolevel(
 		*avg_offset_start = static_cast<int32_t>(summ_offset_start / success_lines);
 		*avg_offset_end = static_cast<int32_t>(summ_offset_end / success_lines);
 		*avg_pixel_per_bit = summ_pixel_per_bit / success_lines;
+		*error_lines = _error_lines;
 	}
 	else {
 		*avg_offset_start = *avg_offset_end = -1;

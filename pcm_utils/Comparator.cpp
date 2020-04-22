@@ -268,3 +268,41 @@ extern "C" __declspec(dllexport) uint8_t AdvancedComparatorBoolOut(uint8_t *data
 	}
 	return true;
 }
+
+extern "C" __declspec(dllexport) void ComparatorBaseBoolOut(uint8_t *data, int32_t size,
+	int32_t offset_start,
+	int32_t offset_end,
+	double pixel_per_bit,
+	/* out */ uint8_t bytes[DATA_OUT_BYTES],
+	/* out */ void *bits, /*[DATA_OUT_BYTES * 8]*/
+	/* out */ uint64_t *indexes /*[DATA_OUT_BYTES * 8]*/
+) {
+	uint8_t *_bits = static_cast<uint8_t*>(bits);
+
+	std::memset(bytes, 0, DATA_OUT_BYTES);
+	std::memset(bits, 0, DATA_OUT_BYTES * 8);
+
+	uint32_t index = 0;
+	for (auto bit_index_f = (pixel_per_bit / 2) + offset_start;
+		index < bits_per_line;
+		bit_index_f += pixel_per_bit, ++index) {
+		auto p_index = (uint32_t)round(bit_index_f) - 1;
+
+		indexes[index] = (uint64_t)&data[p_index];
+
+		if (p_index < 0) { p_index = 0; }
+
+		uint8_t pixel_values[3];
+		std::memcpy(pixel_values, &data[p_index], sizeof(pixel_values));
+
+		uint8_t r = 0;
+		for (auto j = 0; j < sizeof(pixel_values); ++j) {
+			r += pixel_values[j];
+		}
+
+		if (r > 1) {
+			bytes[index >> 3] |= 1 << (7 - index % 8);
+			_bits[index] = 1;
+		}
+	}
+}
