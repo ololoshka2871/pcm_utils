@@ -140,12 +140,12 @@ private:
 		}
 
 		uint8_t value(uint8_t npixel) const {
-			auto base_offset = uint32_t(round(bpp * npixel + 0.5)) + 1;
-
 			if (bpp < 3.0) {
+				auto base_offset = uint32_t(round(bpp * npixel));
 				return buff[base_offset] > 0;
 			}
 			else {
+				auto base_offset = uint32_t(round(bpp * npixel + 0.5)) + 1;
 				auto v = 0;
 				for (auto i = -1; i < 2; ++i) {
 					v += buff[base_offset + i];
@@ -280,7 +280,7 @@ private:
 
 	bool verify_sync(SingleLinePlocessor::PCMPixelReader & reader, OwnForwardIterator<uint8_t> &sync1_start, const double &pixel_pre_pcm_bit)
 	{
-		reader.configure(&binarization_buff[sync1_start.start_offset() + 1], pixel_pre_pcm_bit);
+		reader.configure(&binarization_buff[sync1_start.start_offset()], pixel_pre_pcm_bit);
 
 		static constexpr std::pair<int32_t, bool> reference[]{
 			{ 0, true },{ 1, false },{ 2, true },{ 3, false },
