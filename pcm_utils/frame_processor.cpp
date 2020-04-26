@@ -26,10 +26,12 @@ TresholdProvider::TresholdProvider()
 TresholdProvider::TresholdProvider(const uint8_t threshold, const uint8_t threshold_range)
 	: base(threshold), max_offest(threshold_range * 2), offest(0) {}
 
-int32_t TresholdProvider::value() const {
-	return offest & 1
+uint32_t TresholdProvider::value() const {
+	auto res =  offest & 1
 		? base + offest / 2 + 1
 		: base - offest / 2;
+
+	return res;
 }
 
 bool TresholdProvider::next() {
@@ -69,7 +71,7 @@ struct LineInfo {
 	int32_t offset_end;
 	double pixel_per_bit;
 
-	int32_t treshold;
+	uint32_t treshold;
 	uint32_t line;
 	uint32_t trys;
 };
@@ -77,14 +79,15 @@ struct LineInfo {
 class SingleLinePlocessor {
 public:
 	SingleLinePlocessor(uint8_t *pixel_data, const int32_t width, uint8_t out_line[BYTES_PER_PCM_STRING * CHAR_BIT],
-		uint8_t *binarization_buff, TresholdProvider threshold, LineInfo *lineinfo)
+		uint8_t *binarization_buff, TresholdProvider threshold, LineInfo *lineinfo, double global_offset = 0.0)
 		: pixel_data(pixel_data), width(width), out_line(out_line), binarization_buff(binarization_buff),
-		threshold(threshold), lineinfo(lineinfo) {}
+		threshold(threshold), lineinfo(lineinfo), global_offset(global_offset) {}
 
 	void execute2(uint32_t width_divider, bool hard_verify_sync) {
 		uint8_t bytes[DATA_BYTES_PER_PCM_STRING];
 
-		lineinfo->treshold = threshold.value();
+		auto initial_threshold = lineinfo->treshold = threshold.value();
+
 		binarize(threshold.value());
 
 		PCMPixelReader reader;
@@ -95,31 +98,38 @@ public:
 			return;
 		}
 
-		const std::vector<uint8_t> initial_binarisation_result(binarization_buff, &binarization_buff[width]);
 		lineinfo->result = LineInfo::Error;
+		read_string(bytes, reader);
+
+		std::vector<uint8_t> initial_result(out_line, &out_line[width]);
 		for (;;) {
-			read_string(bytes, reader);
 			if (0 == crc16_ccitt(bytes, sizeof(bytes))) {
 				lineinfo->result = LineInfo::Success;
 				lineinfo->trys = threshold.step() + 1;
-				break; // SUCCESS!
+				return; // SUCCESS!
 			}
 			else if (!threshold.next()) {
-				std::copy(initial_binarisation_result.cbegin(), initial_binarisation_result.cend(), binarization_buff);
+				std::copy(initial_result.cbegin(), initial_result.cend(), out_line);
+
+				lineinfo->treshold = initial_threshold;
 				lineinfo->trys = threshold.maximum();
-				break; // FAIL!
+				return; // FAIL!
 			}
 			while(1) {
+				lineinfo->treshold = threshold.value();
 				binarize(threshold.value());
 				if (detectct_syncro(reader, width_divider)) {
 					break;
 				}
 				else if (!threshold.next()) {
-					std::copy(initial_binarisation_result.cbegin(), initial_binarisation_result.cend(), binarization_buff);
+					std::copy(initial_result.cbegin(), initial_result.cend(), out_line);
+
+					lineinfo->treshold = initial_threshold;
 					lineinfo->trys = threshold.maximum();
-					break; // FAIL!
+					return; // FAIL!
 				}
 			}
+			read_string(bytes, reader);
 		}
 	}
 
@@ -130,32 +140,38 @@ private:
 	uint8_t *out_line;
 	TresholdProvider threshold;
 	LineInfo *lineinfo;
+	double global_offset;
 	
 	struct PCMPixelReader {
 		PCMPixelReader(uint8_t *buff = nullptr, double bpp = 0.0) : buff(buff), bpp(bpp) { }
 
-		void configure(uint8_t *buff, double bpp) {
+		void configure(uint8_t *buff, double bpp, double global_offset = 0.0) {
 			this->buff = buff;
 			this->bpp = bpp;
+			this->global_offset = global_offset;
 		}
 
 		uint8_t value(uint8_t npixel) const {
+			return value(this->buff, npixel);
+		}
+
+		uint8_t value(uint8_t *_buff, uint8_t npixel) const {
 			if (bpp < 3.0) {
-				auto base_offset = uint32_t(round(bpp * npixel));
-				return buff[base_offset] > 0;
+				auto base_offset = uint32_t(round(bpp * npixel + global_offset));
+				return _buff[base_offset] > 0;
 			}
 			else {
-				auto base_offset = uint32_t(round(bpp * npixel + 0.5)) + 1;
+				auto base_offset = uint32_t(round(bpp * npixel + global_offset)) + 1;
 				auto v = 0;
 				for (auto i = -1; i < 2; ++i) {
-					v += buff[base_offset + i];
+					v += _buff[base_offset + i];
 				}
 				return v > 1;
 			}
 		}
 
 		uint8_t value(uint8_t npixel, uint64_t* index) const {
-			auto base_offset = uint32_t(round(bpp * npixel + 0.5)) + 1;
+			auto base_offset = uint32_t(round(bpp * npixel)) + 1;
 
 			*index = (uint64_t)&buff[base_offset - 1];
 
@@ -169,6 +185,7 @@ private:
 	private:
 		uint8_t *buff;
 		double bpp;
+		double global_offset;
 	};
 
 	void read_string(uint8_t* bytes, const PCMPixelReader& reader) {
@@ -182,7 +199,7 @@ private:
 		}
 	}
 
-	void binarize(uint8_t threshold) {
+	void binarize(uint32_t threshold) {
 		for (auto i = 0; i < width; ++i) {
 			binarization_buff[i] = pixel_data[i] >= threshold;
 		}
@@ -273,14 +290,14 @@ private:
 		lineinfo->offset_end = white_level_fall.start_offset();
 		lineinfo->pixel_per_bit = pixel_pre_pcm_bit;
 
-		reader.configure(&binarization_buff[sync2_end.start_offset() + 1], pixel_pre_pcm_bit);
+		reader.configure(&binarization_buff[sync2_end.start_offset() + 1], pixel_pre_pcm_bit, global_offset);
 
 		return true;
 	}
 
 	bool verify_sync(SingleLinePlocessor::PCMPixelReader & reader, OwnForwardIterator<uint8_t> &sync1_start, const double &pixel_pre_pcm_bit)
 	{
-		reader.configure(&binarization_buff[sync1_start.start_offset()], pixel_pre_pcm_bit);
+		reader.configure(&binarization_buff[sync1_start.start_offset()], pixel_pre_pcm_bit, global_offset);
 
 		static constexpr std::pair<int32_t, bool> reference[]{
 			{ 0, true },{ 1, false },{ 2, true },{ 3, false },
@@ -350,6 +367,56 @@ static void generate_staticstics(int32_t * first_pcm_line, int32_t * last_pcm_li
 		*avg_pixel_per_bit = 0;
 	}
 	*tracking = sum_trys;
+}
+
+
+extern "C" __declspec(dllexport) void ProcessFrameErrRateGoffset(
+	/* uint8_t[width][heigth] */ void* frame_data,
+	/* frame size */ const int32_t heigth, const int32_t width,
+	const uint8_t threshold,
+	const uint8_t threshold_range,
+	const uint32_t max_threads,
+
+	/* out uint8_t[width][heigth] */ void* out_data,
+	/* out avg. */ int32_t *avg_offset_start,
+	/* out avg. */ int32_t *avg_offset_end,
+	/* out avg. */ double *avg_pixel_per_bit,
+	/* out */ int32_t *tracking,
+
+	/* out */ int32_t *first_pcm_line,
+	/* out */ int32_t *last_pcm_line,
+	const bool hard_verify_sync,
+	const uint32_t width_divider,
+	/* out */ int32_t *error_lines,
+	double global_offset
+) {
+	TresholdProvider initial_tresholdProvider(threshold, threshold_range);
+
+	std::vector<LineInfo> lines_info(heigth);
+	std::vector<uint8_t> binarisation_storage(width * heigth);
+
+	myTwoDimArray<uint8_t> indata(frame_data, width, heigth);
+	myTwoDimArray<uint8_t> outdata(out_data, DATA_BYTES_PER_PCM_STRING * CHAR_BIT, heigth);
+	myTwoDimArray<uint8_t> binarisation_buf(binarisation_storage.data(), width, heigth);
+
+	// paralel
+	const auto N = max_threads <= 0
+		? omp_get_max_threads()
+		: std::min<decltype(omp_get_max_threads())>(max_threads, omp_get_max_threads());
+
+#pragma omp parallel for num_threads(N)
+	for (auto i = 0; i < heigth; ++i) {
+		auto &li = lines_info.at(i);
+		li.line = i;
+
+		SingleLinePlocessor line_processor(indata.getLine(i), width, outdata.getLine(i),
+			binarisation_buf.getLine(i), initial_tresholdProvider, &li, global_offset);
+		line_processor.execute2(width_divider, hard_verify_sync);
+	}
+
+	// single thread
+	generate_staticstics(first_pcm_line, last_pcm_line, lines_info, avg_offset_start, avg_offset_end,
+		avg_pixel_per_bit, error_lines, tracking);
 }
 
 extern "C" __declspec(dllexport) void ProcessFrameErrRate(

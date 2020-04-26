@@ -14,7 +14,7 @@ public:
 	TresholdProvider(const uint8_t threshold, const uint8_t threshold_range);
 	TresholdProvider(const TresholdProvider&) = default;
 
-	int32_t value() const;
+	uint32_t value() const;
 	bool next();
 	bool end() const;
 	uint32_t step() const;
