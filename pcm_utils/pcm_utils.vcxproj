@@ -160,6 +160,7 @@
     <ClInclude Include="Comparator.h" />
     <ClInclude Include="ComparatorPlusCRC.h" />
     <ClInclude Include="crc16_ccitt.h" />
+    <ClInclude Include="DataBlock.h" />
     <ClInclude Include="find_it_if.h" />
     <ClInclude Include="frame_process.h" />
     <ClInclude Include="hystogramm.h" />
@@ -175,6 +176,7 @@
   <ItemGroup>
     <ClCompile Include="Comparator.cpp" />
     <ClCompile Include="ComparatorPlusCRC.cpp" />
+    <ClCompile Include="DataBlock.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="frame_processor.cpp" />
     <ClCompile Include="hystogramm.cpp" />
