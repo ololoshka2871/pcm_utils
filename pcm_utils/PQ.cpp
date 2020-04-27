@@ -350,20 +350,20 @@ extern "C" __declspec(dllexport) void RestoreByQ(
 	}
 }
 
-
+// Индейцы неправильные
 extern "C" __declspec(dllexport) void RestoreByQ_FixedBlockOut(
 	void* blocks /* uint8_t[8][14] */,
 	int32_t index1, int index2,
 	/* out */ void* restored_blocks /*uint8_t[8][14] */
 ) {
-	DataBlock *line = static_cast<DataBlock *>(blocks);
+	DataBlock reversed_result = static_cast<DataBlock *>(blocks)->Reversed();
 	DataBlock *result = static_cast<DataBlock *>(restored_blocks);
 
-	*result = *line;
-
 	if (index1 == index2) { // Фигня какая-то!
-		result->operator[](DataBlock::ElementNames(index1)) =
-			restore_single(*line, DataBlock::ElementNames(index1));
+		reversed_result[DataBlock::ElementNames(index1)] =
+			restore_single(reversed_result, DataBlock::ElementNames(index1));
+		
+		*result = reversed_result.Reversed();
 		return;
 	}
 
@@ -371,10 +371,11 @@ extern "C" __declspec(dllexport) void RestoreByQ_FixedBlockOut(
 		std::swap(index1, index2);
 	}
 
-	auto &_restored_block1 = result->operator[](DataBlock::ElementNames(index1));
-	auto &_restored_block2 = result->operator[](DataBlock::ElementNames(index2));
+	auto &_restored_block1 = reversed_result[DataBlock::ElementNames(index1)];
+	auto &_restored_block2 = reversed_result[DataBlock::ElementNames(index2)];
 	
 	if ((index1 >= 7) || (index2 >= 8)) {
+		*result = reversed_result.Reversed();
 		return; // INVALID request
 	}
 
@@ -382,28 +383,33 @@ extern "C" __declspec(dllexport) void RestoreByQ_FixedBlockOut(
 		const auto _index1 = static_cast<DataBlock::ElementNames>(index1);
 
 		_restored_block1 = (index1 == 6)
-			? result->Correct_P() // restore P and Q, data ok	
-			: restore_by_P(*result, _index1);// восстановлеине блока index1 по parity
+			? reversed_result.Correct_P() // restore P and Q, data ok	
+			: restore_by_P(reversed_result, _index1);// восстановлеине блока index1 по parity
 
-		_restored_block2 = result->Correct_Q();
+		_restored_block2 = reversed_result.Correct_Q();
+		
+		*result = reversed_result.Reversed();
 		return;
 	}
 
 	auto &calc = calculator_table[index1][index2 - 1];
 
-	auto S_Pn = result->S_Pn();
-	auto S_Qn = result->S_Qn();
+	auto S_Pn = reversed_result.S_Pn();
+	auto S_Qn = reversed_result.S_Qn();
 
 	if (S_Pn.isZero() && S_Qn.isZero()) {// all ok!
+		*result = reversed_result.Reversed();
 		return;
 	}
 
 	auto ER1 = calc.ER1(S_Pn, S_Qn);
-	_restored_block1 = result->operator[](DataBlock::ElementNames(index1)) ^ ER1;
+	_restored_block1 = reversed_result[DataBlock::ElementNames(index1)] ^ ER1;
 
 	_restored_block2 = calc.ER2 != __recalc_P_marker 
-		? result->operator[](DataBlock::ElementNames(index2)) ^ calc.ER2(ER1, S_Pn)
-		: result->Correct_P();
+		? reversed_result[DataBlock::ElementNames(index2)] ^ calc.ER2(ER1, S_Pn)
+		: reversed_result.Correct_P();
+
+	*result = reversed_result.Reversed();
 }
 
 
@@ -422,10 +428,10 @@ extern "C" __declspec(dllexport) void GenerateQ(
 	void* blocks /* uint8_t[8][14] */,
 	/* out */ void* Q /* uint8_t[14] */
 ) {
-	DataBlock *line = static_cast<DataBlock *>(blocks);
+	auto line = static_cast<DataBlock *>(blocks)->Reversed();
 
 	auto _Q = static_cast<Sample *>(Q);
-	*_Q = line->Correct_Q();
+	*_Q = line.Correct_Q().Reversed();
 }
 
 extern "C" __declspec(dllexport) void GeneratePQ(
@@ -433,11 +439,12 @@ extern "C" __declspec(dllexport) void GeneratePQ(
 	/* out */ void* P /* uint8_t[14] */,
 	/* out */ void* Q /* uint8_t[14] */
 ) {
-	DataBlock *line = static_cast<DataBlock *>(blocks);
+	auto orig_line = static_cast<DataBlock *>(blocks);
+	auto reversed_line = orig_line->Reversed();
 
 	auto _P = static_cast<Sample *>(P);
 	auto _Q = static_cast<Sample *>(Q);
 
-	*_P = line->Correct_P();
-	*_Q = line->Correct_Q();
+	*_P = orig_line->Correct_P();
+	*_Q = reversed_line.Correct_Q().Reversed();
 }
