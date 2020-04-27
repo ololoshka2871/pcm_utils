@@ -29,5 +29,7 @@ struct CLASS_DECLSPEC Sample {
 	Sample Reversed() const;
 
 	void* ptr();
+
+	bool isZero() const;
 };
 

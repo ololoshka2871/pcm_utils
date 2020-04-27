@@ -36,7 +36,7 @@ namespace tests
 				,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1
 				,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0 };
 
-	TEST_CLASS(UnitTest1)
+	TEST_CLASS(TestDecodeInput)
 	{
 	public:
 		TEST_METHOD(Indata)

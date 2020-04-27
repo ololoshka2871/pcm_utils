@@ -91,5 +91,47 @@ namespace tests
 
 			assert((correctBlock_le == errorBlock_le));
 		}
+
+		TEST_METHOD(RestoreP)
+		{
+			static const DataBlock correctBlock{
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+			};
+
+			static const DataBlock errorBlock{
+				{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+			};
+
+			DataBlock correctBlock_le{ correctBlock };
+			DataBlock errorBlock_le{ errorBlock };
+
+			auto err1_pos = DataBlock::ElementNames::L0;
+			auto err2_pos = DataBlock::ElementNames::P;
+
+			Sample restored1;
+			Sample restored2;
+
+			RestoreByQ(errorBlock_le.ptr(), static_cast<int>(err1_pos), static_cast<int>(err2_pos),
+				restored1.ptr(), restored2.ptr());
+
+			errorBlock_le[err1_pos] = restored1;
+			errorBlock_le[err2_pos] = restored2;
+
+			assert((correctBlock_le == errorBlock_le));
+		}
 	};
 }

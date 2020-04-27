@@ -58,3 +58,11 @@ Sample Sample::Reversed() const {
 void* Sample::ptr() {
 	return values;
 }
+
+bool Sample::isZero() const {
+	uint8_t r = 0;
+	for (auto i = 0; i < bitsInSample; ++i) {
+		r |= values[i];
+	}
+	return !r;
+}
