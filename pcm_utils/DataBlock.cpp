@@ -65,7 +65,7 @@ Sample DataBlock::T6L0() const {
 }
 
 Sample DataBlock::Correct_P() const {
-	return L0 ^ R0 ^ L1 ^ R1 ^ L2 ^ R2;
+	return ((((L0 ^ R0) ^ L1) ^ R1) ^ L2) ^ R2;
 }
 
 Sample DataBlock::Correct_Q() const {
@@ -107,6 +107,11 @@ DataBlock DataBlock::Reversed() const {
 	return res;
 }
 
-void* DataBlock::ptr() {
+void* DataBlock::ptr()  {
 	return m[0].ptr();
+}
+
+DataBlock& DataBlock::operator=(const DataBlock& lr) {
+	std::memcpy(m, lr.m, sizeof(Sample) * static_cast<size_t>(ElementNames::COUNT));
+	return *this;
 }

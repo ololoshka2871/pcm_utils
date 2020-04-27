@@ -4,13 +4,14 @@
 #include <utility>
 #include <cassert>
 
-#include "Q_calc.h"
+#include "PQ.h"
 
 #include "matrix_constants.h"
 #include "matrix_equations.h"
 
 #include "DataBlock.h"
 
+/****************************************************************************************/
 
 struct E_Calculator {
 	using ER1_calc_t = Sample(*)(const Sample &S_Pn, const Sample& S_Qn);
@@ -258,37 +259,79 @@ static const E_Calculator calculator_table[6][6]{
 
 /****************************************************************************************/
 
-/**
- * blocks - двумерный массив bool 8 строк, 14 битов
- * index1, index2 - индексы побитых блоков
- * restored_block1 - восстановленный блок с номером index1
- * restored_block1 - восстановленный блок с номером index2
- */
+static Sample restore_by_P(DataBlock &line, DataBlock::ElementNames err_index) {
+	Sample result{};
+	for (size_t sample = 0; sample < static_cast<size_t>(DataBlock::ElementNames::P); ++sample) {
+		const auto _sample = DataBlock::ElementNames(sample);
+		if (_sample == err_index) {
+			continue;
+		}
+		result = result ^ line[_sample];
+	}
+	return result ^ line[DataBlock::ElementNames::P];
+}
+
+static Sample restore_single(DataBlock &line, DataBlock::ElementNames err_index) {
+	switch (err_index)
+	{
+		case DataBlock::ElementNames::P:
+			return line.Correct_P();
+		case DataBlock::ElementNames::Q:
+			return line.Correct_Q();
+		default:
+			return restore_by_P(line, err_index);
+	}
+}
+
+/****************************************************************************************/
+
+
 extern "C" __declspec(dllexport) void RestoreByQ(
 	void* blocks /* uint8_t[8][14] */,
 	int32_t index1, int index2,
 	/* out */ void* restored_block1 /* uint8_t[14] */,
 	/* out */ void* restored_block2 /* uint8_t[14] */
 ) {
-	assert((index1 < 6) && (index2 < 7));
+	auto _restored_block1 = static_cast<Sample *>(restored_block1);
+	auto _restored_block2 = static_cast<Sample *>(restored_block2);
+
+	DataBlock *line = static_cast<DataBlock *>(blocks);
+
+	if (index1 == index2) {			 // Фигня какая-то!
+		*_restored_block2 = *_restored_block1 = restore_single(*line, DataBlock::ElementNames(index1));
+		return;
+	}
 
 	if (index2 < index1) {
 		std::swap(index1, index2);
 		std::swap(restored_block1, restored_block2);
 	}
 
-	auto &calc = calculator_table[index1][index2 - 1];
+	if ((index1 >= 7) || (index2 >= 8)) {
+		return; // INVALID request
+	}
 
-	DataBlock *line = static_cast<DataBlock *>(blocks);
+	if (index2 == 7) {
+		const auto _index1 = static_cast<DataBlock::ElementNames>(index1);
+
+		Sample restored_block1 = (index1 == 6)
+			? line->Correct_P() // restore P and Q, data ok	
+			: restore_by_P(*line, _index1);// восстановлеине блока index1 по parity
+
+		DataBlock restored_data(*line);
+		restored_data[_index1] = restored_block1;
+
+		*_restored_block1 = restored_block1;
+		*_restored_block2 = restored_data.Correct_Q();
+		return;
+	}
+
+	auto &calc = calculator_table[index1][index2 - 1];
 
 	auto S_Pn = line->S_Pn();
 	auto S_Qn = line->S_Qn();
 
-	auto _restored_block1 = static_cast<Sample *>(restored_block1);
-	auto _restored_block2 = static_cast<Sample *>(restored_block2);
-
-	if (S_Pn.isZero() && S_Qn.isZero()) {
-		// all ok!
+	if (S_Pn.isZero() && S_Qn.isZero()) {// all ok!
 		*_restored_block1 = line->operator[](DataBlock::ElementNames(index1));
 		*_restored_block2 = line->operator[](DataBlock::ElementNames(index2));
 		return;
@@ -307,11 +350,63 @@ extern "C" __declspec(dllexport) void RestoreByQ(
 	}
 }
 
-/**
- * blocks - двумерный массив bool 8 строк, 14 битов
- * P - восстановленный блок с номером index1
- * Q - восстановленный блок с номером index2
- */
+
+extern "C" __declspec(dllexport) void RestoreByQ_FixedBlockOut(
+	void* blocks /* uint8_t[8][14] */,
+	int32_t index1, int index2,
+	/* out */ void* restored_blocks /*uint8_t[8][14] */
+) {
+	DataBlock *line = static_cast<DataBlock *>(blocks);
+	DataBlock *result = static_cast<DataBlock *>(restored_blocks);
+
+	*result = *line;
+
+	if (index1 == index2) { // Фигня какая-то!
+		result->operator[](DataBlock::ElementNames(index1)) =
+			restore_single(*line, DataBlock::ElementNames(index1));
+		return;
+	}
+
+	if (index2 < index1) {
+		std::swap(index1, index2);
+	}
+
+	auto &_restored_block1 = result->operator[](DataBlock::ElementNames(index1));
+	auto &_restored_block2 = result->operator[](DataBlock::ElementNames(index2));
+	
+	if ((index1 >= 7) || (index2 >= 8)) {
+		return; // INVALID request
+	}
+
+	if (index2 == 7) {
+		const auto _index1 = static_cast<DataBlock::ElementNames>(index1);
+
+		_restored_block1 = (index1 == 6)
+			? result->Correct_P() // restore P and Q, data ok	
+			: restore_by_P(*result, _index1);// восстановлеине блока index1 по parity
+
+		_restored_block2 = result->Correct_Q();
+		return;
+	}
+
+	auto &calc = calculator_table[index1][index2 - 1];
+
+	auto S_Pn = result->S_Pn();
+	auto S_Qn = result->S_Qn();
+
+	if (S_Pn.isZero() && S_Qn.isZero()) {// all ok!
+		return;
+	}
+
+	auto ER1 = calc.ER1(S_Pn, S_Qn);
+	_restored_block1 = result->operator[](DataBlock::ElementNames(index1)) ^ ER1;
+
+	_restored_block2 = calc.ER2 != __recalc_P_marker 
+		? result->operator[](DataBlock::ElementNames(index2)) ^ calc.ER2(ER1, S_Pn)
+		: result->Correct_P();
+}
+
+
 extern "C" __declspec(dllexport) void GenerateP(
 	void* blocks /* uint8_t[8][14] */,
 	/* out */ void* P /* uint8_t[14] */
@@ -323,11 +418,6 @@ extern "C" __declspec(dllexport) void GenerateP(
 }
 
 
-/**
- * blocks - двумерный массив bool 8 строк, 14 битов
- * P - восстановленный блок с номером index1
- * Q - восстановленный блок с номером index2
- */
 extern "C" __declspec(dllexport) void GenerateQ(
 	void* blocks /* uint8_t[8][14] */,
 	/* out */ void* Q /* uint8_t[14] */
@@ -338,12 +428,6 @@ extern "C" __declspec(dllexport) void GenerateQ(
 	*_Q = line->Correct_Q();
 }
 
-
-/**
- * blocks - двумерный массив bool 8 строк, 14 битов
- * P - восстановленный блок с номером index1
- * Q - восстановленный блок с номером index2
- */
 extern "C" __declspec(dllexport) void GeneratePQ(
 	void* blocks /* uint8_t[8][14] */,
 	/* out */ void* P /* uint8_t[14] */,

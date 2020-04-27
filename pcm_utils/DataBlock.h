@@ -39,6 +39,8 @@ union CLASS_DECLSPEC DataBlock {
 
 	bool operator==(const DataBlock& lr);
 
+	DataBlock& operator=(const DataBlock& lr);
+
 	void* ptr();
 
 	DataBlock Reversed() const;
