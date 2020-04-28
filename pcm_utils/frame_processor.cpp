@@ -103,36 +103,29 @@ public:
 
 		std::vector<uint8_t> initial_result(out_line, &out_line[width]);
 		for (;;) {
-			if (0 == crc16_ccitt(bytes, sizeof(bytes))) {
-				lineinfo->result = LineInfo::Success;
-				lineinfo->trys = threshold.step() + 1;
-				return; // SUCCESS!
-			}
-			else if (!threshold.next()) {
-				std::copy(initial_result.cbegin(), initial_result.cend(), out_line);
-
-				lineinfo->treshold = initial_threshold;
-				lineinfo->trys = threshold.maximum();
-				return; // FAIL!
-			}
-			while(1) {
-				lineinfo->treshold = threshold.value();
-				binarize(threshold.value());
-				if (detectct_syncro(reader, width_divider)) {
-					break;
+			if (global_offset == 0.0) {
+				if (try_parce(bytes, initial_result, initial_threshold, reader, width_divider)) {
+					return;
 				}
-				else if (!threshold.next()) {
-					std::copy(initial_result.cbegin(), initial_result.cend(), out_line);
-
-					lineinfo->treshold = initial_threshold;
-					lineinfo->trys = threshold.maximum();
-					return; // FAIL!
-				}
+				lineinfo->trys++;
 			}
-			read_string(bytes, reader);
+			else {
+				for (auto i = 0; i < 2; ++i) {
+					auto df = (i == 0)
+						? 0.0
+						: i == 1
+						? global_offset
+						: -global_offset;
+					
+					if (try_parce(bytes, initial_result, initial_threshold, reader, width_divider, df)) {
+						return;
+					}
+					lineinfo->trys++;
+				}	
+			}
 		}
 	}
-
+	
 private:
 	uint8_t *pixel_data;
 	int32_t width;
@@ -188,6 +181,39 @@ private:
 		double global_offset;
 	};
 
+
+	bool  try_parce(uint8_t  bytes[DATA_BYTES_PER_PCM_STRING], std::vector<uint8_t> &initial_result, const uint32_t &initial_threshold,
+		PCMPixelReader &reader, const uint32_t &width_divider, double offset = 0.0)
+	{
+		if (0 == crc16_ccitt(bytes, DATA_BYTES_PER_PCM_STRING)) {
+			lineinfo->result = LineInfo::Success;
+			return true; // SUCCESS!
+		}
+		else if (!threshold.next()) {
+			std::copy(initial_result.cbegin(), initial_result.cend(), out_line);
+
+			lineinfo->treshold = initial_threshold;
+			lineinfo->trys = threshold.maximum();
+			return true; // FAIL!
+		}
+		while (1) {
+			lineinfo->treshold = threshold.value();
+			binarize(threshold.value());
+			if (detectct_syncro(reader, width_divider, offset)) {
+				break;
+			}
+			else if (!threshold.next()) {
+				std::copy(initial_result.cbegin(), initial_result.cend(), out_line);
+
+				lineinfo->treshold = initial_threshold;
+				lineinfo->trys = threshold.maximum();
+				return true; // FAIL!
+			}
+		}
+		read_string(bytes, reader);
+		return false;
+	}
+
 	void read_string(uint8_t* bytes, const PCMPixelReader& reader) {
 		std::memset(bytes, 0, DATA_BYTES_PER_PCM_STRING);
 
@@ -205,7 +231,7 @@ private:
 		}
 	}
 
-	bool detectct_syncro(PCMPixelReader& reader, uint32_t width_divider, bool hard_verify_sync = false) {
+	bool detectct_syncro(PCMPixelReader& reader, uint32_t width_divider, double offset, bool hard_verify_sync = false) {
 		OwnForwardIterator<uint8_t> first_sync_start(binarization_buff, width);
 		OwnForwardIterator<uint8_t> first_sync_end(first_sync_start);
 
@@ -281,7 +307,7 @@ private:
 			OwnForwardIterator<uint8_t> __sync1_start(&binarization_buff[sync1_start_offset], 
 				binarization_buff, &binarization_buff[width]);
 
-			if (!verify_sync(reader, __sync1_start, pixel_pre_pcm_bit)) {
+			if (!verify_sync(reader, __sync1_start, pixel_pre_pcm_bit, offset)) {
 				return false;
 			}
 		}
@@ -290,14 +316,15 @@ private:
 		lineinfo->offset_end = white_level_fall.start_offset();
 		lineinfo->pixel_per_bit = pixel_pre_pcm_bit;
 
-		reader.configure(&binarization_buff[sync2_end.start_offset() + 1], pixel_pre_pcm_bit, global_offset);
+		reader.configure(&binarization_buff[sync2_end.start_offset() + 1], pixel_pre_pcm_bit, offset);
 
 		return true;
 	}
 
-	bool verify_sync(SingleLinePlocessor::PCMPixelReader & reader, OwnForwardIterator<uint8_t> &sync1_start, const double &pixel_pre_pcm_bit)
+	bool verify_sync(SingleLinePlocessor::PCMPixelReader & reader, OwnForwardIterator<uint8_t> &sync1_start, 
+		const double &pixel_pre_pcm_bit, const double offset)
 	{
-		reader.configure(&binarization_buff[sync1_start.start_offset()], pixel_pre_pcm_bit, global_offset);
+		reader.configure(&binarization_buff[sync1_start.start_offset()], pixel_pre_pcm_bit, offset);
 
 		static constexpr std::pair<int32_t, bool> reference[]{
 			{ 0, true },{ 1, false },{ 2, true },{ 3, false },
