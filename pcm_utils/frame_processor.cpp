@@ -70,6 +70,7 @@ struct LineInfo {
 	int32_t offset_start;
 	int32_t offset_end;
 	double pixel_per_bit;
+	double shift;
 
 	uint32_t treshold;
 	uint32_t line;
@@ -85,6 +86,8 @@ public:
 
 	void execute2(uint32_t width_divider, bool hard_verify_sync) {
 		uint8_t bytes[DATA_BYTES_PER_PCM_STRING];
+
+		auto st = threshold;
 
 		auto initial_threshold = lineinfo->treshold = threshold.value();
 
@@ -102,26 +105,28 @@ public:
 		read_string(bytes, reader);
 
 		std::vector<uint8_t> initial_result(out_line, &out_line[width]);
+
 		for (;;) {
-			if (global_offset == 0.0) {
-				if (try_parce(bytes, initial_result, initial_threshold, reader, width_divider)) {
-					return;
-				}
-				lineinfo->trys++;
+			if (try_parce(bytes, initial_result, initial_threshold, reader, width_divider)) {
+				return;
 			}
-			else {
+			lineinfo->trys++;
+			lineinfo->shift = 0.0;
+		}
+		if (global_offset != 0.0) {
+			threshold = st; // reset threshold
+			for (;;) {
 				for (auto i = 0; i < 2; ++i) {
 					auto df = (i == 0)
-						? 0.0
-						: i == 1
 						? global_offset
 						: -global_offset;
-					
+
 					if (try_parce(bytes, initial_result, initial_threshold, reader, width_divider, df)) {
 						return;
 					}
 					lineinfo->trys++;
-				}	
+					lineinfo->shift = df;
+				}
 			}
 		}
 	}
@@ -138,23 +143,28 @@ private:
 	struct PCMPixelReader {
 		PCMPixelReader(uint8_t *buff = nullptr, double bpp = 0.0) : buff(buff), bpp(bpp) { }
 
-		void configure(uint8_t *buff, double bpp, double global_offset = 0.0) {
+		void configure(uint8_t *buff, double bpp, double tune_offset = 0.0) {
 			this->buff = buff;
 			this->bpp = bpp;
-			this->global_offset = global_offset;
+			this->tune_offset = tune_offset;
 		}
 
 		uint8_t value(uint8_t npixel) const {
 			return value(this->buff, npixel);
 		}
 
+	private:
+		uint8_t *buff;
+		double bpp;
+		double tune_offset;
+
 		uint8_t value(uint8_t *_buff, uint8_t npixel) const {
 			if (bpp < 3.0) {
-				auto base_offset = uint32_t(round(bpp * npixel + global_offset));
+				auto base_offset = uint32_t(round(bpp / 2.0 + bpp * npixel + tune_offset));
 				return _buff[base_offset] > 0;
 			}
 			else {
-				auto base_offset = uint32_t(round(bpp * npixel + global_offset)) + 1;
+				auto base_offset = uint32_t(round(bpp / 2.0 + bpp * npixel + tune_offset));
 				auto v = 0;
 				for (auto i = -1; i < 2; ++i) {
 					v += _buff[base_offset + i];
@@ -162,23 +172,6 @@ private:
 				return v > 1;
 			}
 		}
-
-		uint8_t value(uint8_t npixel, uint64_t* index) const {
-			auto base_offset = uint32_t(round(bpp * npixel)) + 1;
-
-			*index = (uint64_t)&buff[base_offset - 1];
-
-			auto v = 0;
-			for (auto i = -1; i < 2; ++i) {
-				v += buff[base_offset + i];
-			}
-			return v > 1;
-		}
-
-	private:
-		uint8_t *buff;
-		double bpp;
-		double global_offset;
 	};
 
 
@@ -298,7 +291,7 @@ private:
 		auto sync_zero_size = sync2_start_offset - sync1_end_off;
 
 		std::advance(white_level_fall, sync_zero_size);
-		std::advance(sync2_end, sync_zero_size + 1);
+		std::advance(sync2_end, sync_zero_size);
 
 		const auto data_pixels_count = white_level_fall.start_offset() - sync2_end.start_offset();
 		const auto pixel_pre_pcm_bit = data_pixels_count / (double)(DATA_BYTES_PER_PCM_STRING * CHAR_BIT);
@@ -316,7 +309,7 @@ private:
 		lineinfo->offset_end = white_level_fall.start_offset();
 		lineinfo->pixel_per_bit = pixel_pre_pcm_bit;
 
-		reader.configure(&binarization_buff[sync2_end.start_offset() + 1], pixel_pre_pcm_bit, offset);
+		reader.configure(&binarization_buff[sync2_end.start_offset()], pixel_pre_pcm_bit, offset);
 
 		return true;
 	}
