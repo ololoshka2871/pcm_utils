@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "deinterleaving", "deinterle
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "emphasis", "emphasis\emphasis.vcxproj", "{D92DFE64-884D-4A64-9DBA-94298B74F207}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FFmpegVideoReader", "FFmpegVideoReader\FFmpegVideoReader.vcxproj", "{0DB76806-5699-481F-A942-48F789A141C9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -61,6 +63,14 @@ Global
 		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Release|x64.Build.0 = Release|x64
 		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Release|x86.ActiveCfg = Release|Win32
 		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Release|x86.Build.0 = Release|Win32
+		{0DB76806-5699-481F-A942-48F789A141C9}.Debug|x64.ActiveCfg = Debug|x64
+		{0DB76806-5699-481F-A942-48F789A141C9}.Debug|x64.Build.0 = Debug|x64
+		{0DB76806-5699-481F-A942-48F789A141C9}.Debug|x86.ActiveCfg = Debug|Win32
+		{0DB76806-5699-481F-A942-48F789A141C9}.Debug|x86.Build.0 = Debug|Win32
+		{0DB76806-5699-481F-A942-48F789A141C9}.Release|x64.ActiveCfg = Release|x64
+		{0DB76806-5699-481F-A942-48F789A141C9}.Release|x64.Build.0 = Release|x64
+		{0DB76806-5699-481F-A942-48F789A141C9}.Release|x86.ActiveCfg = Release|Win32
+		{0DB76806-5699-481F-A942-48F789A141C9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
