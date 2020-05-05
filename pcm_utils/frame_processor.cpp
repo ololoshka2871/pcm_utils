@@ -105,7 +105,7 @@ public:
 		read_string(bytes, reader);
 
 		std::vector<uint8_t> initial_result(out_line, &out_line[width]);
-
+		lineinfo->trys++;
 		for (;;) {
 			if (try_parce(bytes, initial_result, initial_threshold, reader, width_divider)) {
 				return;

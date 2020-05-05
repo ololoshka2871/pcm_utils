@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bitmap", "bitmap\bitmap.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "deinterleaving", "deinterleaving\deinterleaving.vcxproj", "{EC2DD1AF-C7D2-426D-A33C-58262D5C7DD1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "emphasis", "emphasis\emphasis.vcxproj", "{D92DFE64-884D-4A64-9DBA-94298B74F207}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -51,6 +53,14 @@ Global
 		{EC2DD1AF-C7D2-426D-A33C-58262D5C7DD1}.Release|x64.Build.0 = Release|x64
 		{EC2DD1AF-C7D2-426D-A33C-58262D5C7DD1}.Release|x86.ActiveCfg = Release|Win32
 		{EC2DD1AF-C7D2-426D-A33C-58262D5C7DD1}.Release|x86.Build.0 = Release|Win32
+		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Debug|x64.ActiveCfg = Debug|x64
+		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Debug|x64.Build.0 = Debug|x64
+		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Debug|x86.ActiveCfg = Debug|Win32
+		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Debug|x86.Build.0 = Debug|Win32
+		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Release|x64.ActiveCfg = Release|x64
+		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Release|x64.Build.0 = Release|x64
+		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Release|x86.ActiveCfg = Release|Win32
+		{D92DFE64-884D-4A64-9DBA-94298B74F207}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
