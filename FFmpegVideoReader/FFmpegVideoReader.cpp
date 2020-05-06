@@ -3,6 +3,8 @@
 
 #include "stdafx.h"
 
+
+
 #include "Context.h"
 
 extern "C" __declspec(dllexport) void CreateFFmpegContext(char* filename, void **pCtx, int *error_code) {
@@ -20,8 +22,36 @@ extern "C" __declspec(dllexport) void DestroyFFmpegContext(void** pCtx) {
 	delete _ctx;
 }
 
-extern "C" __declspec(dllexport) void GetNextFrame(
-	/* In */ FfmpegContext **ctx
+extern "C" __declspec(dllexport) void GetFrameSize(
+	/* In */ FfmpegContext **ctx, 
+	/* out */ int32_t *weigth,
+	/* out */ int32_t *heigth
 ) {
+	auto _ctx = static_cast<FfmpegContext*>(*ctx);
+	std::tie(*weigth, *heigth) = _ctx->get_frame_size();
+}
 
+extern "C" __declspec(dllexport) void GetFrameCount(
+	/* In */ FfmpegContext **ctx,
+	/* out */ int32_t *frame_count
+) {
+	auto _ctx = static_cast<FfmpegContext*>(*ctx);
+	*frame_count = _ctx->get_frame_count();
+}
+
+extern "C" __declspec(dllexport) void GetNextFrame(
+	/* In */ FfmpegContext **ctx,
+
+	/* out */ uint8_t *pixel_data,
+	/* out */ int *error_code
+) {
+	auto _ctx = static_cast<FfmpegContext*>(*ctx);
+
+	try {
+		_ctx->read_next_video_pocket();
+		_ctx->read_frame_to(pixel_data);
+		_ctx->unref_current_pocket();
+	} catch (FFmpegException ex) {
+		*error_code = ex.errorCode();
+	}
 }

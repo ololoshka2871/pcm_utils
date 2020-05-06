@@ -2,6 +2,7 @@
 
 #include <string>
 #include <exception>
+#include <tuple>
 
 extern "C"
 {
@@ -30,10 +31,26 @@ private:
 
 struct FfmpegContext {
 	FfmpegContext(const std::string &filename);
+	~FfmpegContext();
+
+	std::tuple<int32_t, int32_t> get_frame_size() const;
+	int32_t get_frame_count() const;
+
+	void read_next_video_pocket();
+	void read_frame_to(uint8_t* pixel_data);
+	void unref_current_pocket();
 
 private:
 	AVFormatContext* pFormatContext;
 	AVCodec *pCodec;
 	AVCodecParameters *pCodecParameters;
 	AVCodecContext *pCodecContext;
+	AVFrame *pFrame;
+	AVPacket *pPacket;
+
+	uint32_t video_stream_index;
+
+	AVFrame* pFrameYUV;
+	uint8_t* YUVbuffer;
+	SwsContext* sws_ctx;
 };
