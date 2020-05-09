@@ -35,12 +35,14 @@ struct FfmpegContext {
 
 	std::tuple<int32_t, int32_t> get_frame_size() const;
 	int32_t get_frame_count() const;
+	int skip_frames(int64_t frame_count);
 
-	void read_next_video_pocket();
-	void read_frame_to(uint8_t* pixel_data);
-	void unref_current_pocket();
+	int64_t read_frame_to(uint8_t* pixel_data);
 
 private:
+	void read_next_video_pocket();
+	void unref_current_pocket();
+
 	AVFormatContext* pFormatContext;
 	AVCodec *pCodec;
 	AVCodecParameters *pCodecParameters;

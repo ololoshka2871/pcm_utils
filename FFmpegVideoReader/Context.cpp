@@ -134,21 +134,40 @@ void FfmpegContext::read_next_video_pocket() {
 	}
 }
 
-void FfmpegContext::read_frame_to(uint8_t* pixel_data) {
-	auto res = avcodec_send_packet(pCodecContext, pPacket);
-	if (res != 0) {
-		throw FFmpegException{ res };
+int64_t FfmpegContext::read_frame_to(uint8_t* pixel_data) {
+	while (1) {
+		auto res = avcodec_receive_frame(pCodecContext, pFrame);
+		if (res == AVERROR(EAGAIN)) {
+			read_next_video_pocket();
+			res = avcodec_send_packet(pCodecContext, pPacket);
+			if (res != 0) {
+				throw FFmpegException{ res };
+			}
+			unref_current_pocket();
+			continue;
+		}
+		if (res < 0) {
+			throw FFmpegException{ res };
+		}
+		break;
 	}
-	res = avcodec_receive_frame(pCodecContext, pFrame);
-	if (res < 0) {
-		throw FFmpegException{ res };
-	}
-	sws_scale(sws_ctx, (uint8_t const * const *)pFrame->data, pFrame->linesize, 0, pCodecContext->height, pFrameYUV->data, pFrameYUV->linesize);
+
+	sws_scale(sws_ctx, (uint8_t const * const *)pFrame->data, pFrame->linesize, 0,
+		pCodecContext->height, pFrameYUV->data, pFrameYUV->linesize);
 
 	// теперь в pFrameYUV->data[0] лежать Y для всех пикселей кадра
 	std::memcpy(pixel_data, pFrameYUV->data[0], pFrameYUV->width * pFrameYUV->height * sizeof(uint8_t));
+	return int64_t(pFrame->pts * av_q2d(pFormatContext->streams[video_stream_index]->time_base) 
+		* av_q2d(pFormatContext->streams[video_stream_index]->r_frame_rate));
 }
 
 void FfmpegContext::unref_current_pocket() {
 	av_packet_unref(pPacket);
+}
+
+int FfmpegContext::skip_frames(int64_t frame_count) {
+	auto fps = av_q2d(pFormatContext->streams[video_stream_index]->r_frame_rate);
+	auto frame_time_tb = AV_TIME_BASE / fps;
+
+	return av_seek_frame(pFormatContext, -1, int64_t(frame_count * frame_time_tb), 0);
 }

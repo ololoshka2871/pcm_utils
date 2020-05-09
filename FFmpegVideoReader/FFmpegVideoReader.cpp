@@ -39,7 +39,15 @@ extern "C" __declspec(dllexport) void GetFrameCount(
 	*frame_count = _ctx->get_frame_count();
 }
 
-extern "C" __declspec(dllexport) void GetNextFrame(
+extern "C" __declspec(dllexport) int SkipFrames(
+	/* In */ FfmpegContext **ctx,
+	/* out */ int64_t timestamp
+) {
+	auto _ctx = static_cast<FfmpegContext*>(*ctx);
+	return _ctx->skip_frames(timestamp);
+}
+
+extern "C" __declspec(dllexport) int64_t GetNextFrame(
 	/* In */ FfmpegContext **ctx,
 
 	/* out */ uint8_t *pixel_data,
@@ -48,9 +56,7 @@ extern "C" __declspec(dllexport) void GetNextFrame(
 	auto _ctx = static_cast<FfmpegContext*>(*ctx);
 
 	try {
-		_ctx->read_next_video_pocket();
-		_ctx->read_frame_to(pixel_data);
-		_ctx->unref_current_pocket();
+		return _ctx->read_frame_to(pixel_data);
 	} catch (FFmpegException ex) {
 		*error_code = ex.errorCode();
 	}
