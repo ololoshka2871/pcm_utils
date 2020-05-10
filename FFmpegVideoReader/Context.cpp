@@ -1,7 +1,11 @@
 
 #include "stdafx.h"
 
+#include <cmath>
+
 #include "Context.h"
+
+#define snprintf(buf,len, format,...) _snprintf_s(buf, len,len, format, __VA_ARGS__)
 
 FfmpegContext::FfmpegContext(const std::string &filename) {
 	int32_t res;
@@ -170,4 +174,20 @@ int FfmpegContext::skip_frames(int64_t frame_count) {
 	auto frame_time_tb = AV_TIME_BASE / fps;
 
 	return av_seek_frame(pFormatContext, -1, int64_t(frame_count * frame_time_tb), 0);
+}
+
+void FfmpegContext::print_timestamp_to(char* s) const {
+	auto time_s = pFrame->pts * av_q2d(pFormatContext->streams[video_stream_index]->time_base);
+
+	int hour = std::floor(time_s / (60 * 60));
+
+	int minute = std::floor((time_s - (hour * 60 * 60)) / 60);
+
+	int seconds = std::floor(time_s - (hour * 60 * 60) - (minute * 60));
+
+	auto t = time_s - (hour * 60 * 60) - (minute * 60) - seconds;
+
+	t *= 1000;
+
+	snprintf(s, 13, "%02d:%02d:%02d.%03d", hour, minute, seconds, int(t));
 }

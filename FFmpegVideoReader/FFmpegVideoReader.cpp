@@ -3,9 +3,8 @@
 
 #include "stdafx.h"
 
-
-
 #include "Context.h"
+
 
 extern "C" __declspec(dllexport) void CreateFFmpegContext(char* filename, void **pCtx, int *error_code) {
 	try {
@@ -51,12 +50,19 @@ extern "C" __declspec(dllexport) int64_t GetNextFrame(
 	/* In */ FfmpegContext **ctx,
 
 	/* out */ uint8_t *pixel_data,
+	/* In */  char* timestamp,
 	/* out */ int *error_code
 ) {
 	auto _ctx = static_cast<FfmpegContext*>(*ctx);
 
 	try {
-		return _ctx->read_frame_to(pixel_data);
+		auto result = _ctx->read_frame_to(pixel_data);
+
+		if (timestamp != nullptr) {
+			_ctx->print_timestamp_to(timestamp);
+		}
+
+		return result;
 	} catch (FFmpegException ex) {
 		*error_code = ex.errorCode();
 	}

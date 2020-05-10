@@ -20,6 +20,12 @@ extern "C"
 #include <libavfilter/avfilter.h>
 }
 
+struct LStrHandle {
+	uint32_t len;
+	char symbols[];
+};
+
+
 struct FFmpegException : std::exception {
 	FFmpegException() = default;
 	FFmpegException(int32_t code) : error(code) {}
@@ -36,6 +42,7 @@ struct FfmpegContext {
 	std::tuple<int32_t, int32_t> get_frame_size() const;
 	int32_t get_frame_count() const;
 	int skip_frames(int64_t frame_count);
+	void print_timestamp_to(char *s) const;
 
 	int64_t read_frame_to(uint8_t* pixel_data);
 

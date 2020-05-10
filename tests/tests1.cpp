@@ -182,5 +182,14 @@ namespace tests
 			delete[] frame;
 			delete[] outdata;
 		}
+
+		TEST_METHOD(TestCast) {
+			float v = 1.0f / (1 << 15) / 2;
+
+			float v1 = v * (float)0x4000000000000000;
+
+			auto r1 = static_cast<int32_t>(v1 / 0x0000800000000000);
+			auto r2 = (int32_t)(v1 / 0x0000800000000000);
+		}
 	};
 }

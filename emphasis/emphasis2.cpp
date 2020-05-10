@@ -87,22 +87,27 @@ void generate_result(int16_t *stereo_data_Out, int32_t size,
 
 	int64_t error_integrator_L = 0, error_integrator_R = 0;
 	for (auto i = 0; i < size; i += 2, ++l_it, ++r_it)	{
-		auto L = fix_overflow(*l_it);
-		auto R = fix_overflow(*r_it);
+		int64_t L = fix_overflow(*l_it);
+		int64_t R = fix_overflow(*r_it);
 
-		auto A = static_cast<int32_t>(L / Shift16s);
+		auto A = (int32_t)(L / Shift16s);
+		/*
 		error_integrator_L += L % Shift16s;
 		if (error_integrator_L >= Shift16s && A < INT16_MAX) { 
 			A += 1;
 			error_integrator_L -= Shift16s;
 		}
+		*/
 
-		auto B = static_cast<int32_t>(R / Shift16s);
+		auto B = (int32_t)(R / Shift16s);
+		//auto B = static_cast<int32_t>(R / Shift16s); <-- not this!!!!!
+		/*
 		error_integrator_R += R % Shift16s;
 		if (error_integrator_R >= Shift16s && B < INT16_MAX) {
 			B += 1;
 			error_integrator_R -= Shift16s;
 		}
+		*/
 
 		stereo_data_Out[i] = A;
 		stereo_data_Out[i + 1] = B;
