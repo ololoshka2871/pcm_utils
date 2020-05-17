@@ -160,6 +160,7 @@
   <ItemGroup>
     <ClCompile Include="Context.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="enumerate_devicese.cpp" />
     <ClCompile Include="FFmpegVideoReader.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>

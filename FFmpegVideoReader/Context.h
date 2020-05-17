@@ -36,13 +36,15 @@ private:
 };
 
 struct FfmpegContext {
-	FfmpegContext(const std::string &filename);
+	FfmpegContext(const std::string &filename, const std::string &protocol = "");
 	~FfmpegContext();
 
 	std::tuple<int32_t, int32_t> get_frame_size() const;
 	int32_t get_frame_count() const;
 	int skip_frames(int64_t frame_count);
 	void print_timestamp_to(char *s) const;
+
+	static void av_device_register_all();
 
 	int64_t read_frame_to(uint8_t* pixel_data);
 
@@ -51,6 +53,7 @@ private:
 	void unref_current_pocket();
 
 	AVFormatContext* pFormatContext;
+	AVInputFormat *iformat;
 	AVCodec *pCodec;
 	AVCodecParameters *pCodecParameters;
 	AVCodecContext *pCodecContext;

@@ -5,10 +5,9 @@
 
 #include "Context.h"
 
-
-extern "C" __declspec(dllexport) void CreateFFmpegContext(char* filename, void **pCtx, int *error_code) {
+extern "C" __declspec(dllexport) void CreateFFmpegContext(char* filename, char* protocol, void **pCtx, int *error_code) {
 	try {
-		*pCtx = new FfmpegContext{ std::string{filename} };
+		*pCtx = new FfmpegContext{ std::string(filename), std::string(protocol) };
 		*error_code = 0;
 	}
 	catch (FFmpegException ex) {
@@ -40,10 +39,13 @@ extern "C" __declspec(dllexport) void GetFrameCount(
 
 extern "C" __declspec(dllexport) int SkipFrames(
 	/* In */ FfmpegContext **ctx,
-	/* out */ int64_t timestamp
+	/* out */ int64_t frames_to_skip
 ) {
-	auto _ctx = static_cast<FfmpegContext*>(*ctx);
-	return _ctx->skip_frames(timestamp);
+	if (frames_to_skip > 0) {
+		auto _ctx = static_cast<FfmpegContext*>(*ctx);
+		return _ctx->skip_frames(frames_to_skip);
+	}
+	return 0;
 }
 
 extern "C" __declspec(dllexport) int64_t GetNextFrame(

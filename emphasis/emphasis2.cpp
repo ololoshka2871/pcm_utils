@@ -44,9 +44,9 @@ static float normalise_value(int16_t v) {
 	return (static_cast<int32_t>(v) << 16) / static_cast<float>(INT_MAX);
 }
 
+template <typename Tit>
 static void demux_stereo(int16_t *stereo_data_In, int32_t size, 
-	std::vector<float>::iterator l_it,
-	std::vector<float>::iterator r_it) {
+	Tit l_it, Tit r_it) {
 	for (auto i = 0; i < size; i += 2, ++l_it, ++r_it) {
 		*l_it = normalise_value(stereo_data_In[i]);
 		*r_it = normalise_value(stereo_data_In[i + 1]);
@@ -83,12 +83,32 @@ uint64_t fix_overflow(float f) {
 
 void generate_result(int16_t *stereo_data_Out, int32_t size,
 	std::vector<float>::iterator l_it,
-	std::vector<float>::iterator r_it) {
+	std::vector<float>::iterator r_it,
+	double *L_out = nullptr, double* R_out = nullptr) {
+
+	auto fix_float_ovf = [](float f) { 
+		return (f > 1.0)
+			? 1.0
+			: (f < -1.0) ? -1.0	: f;
+	};
 
 	int64_t error_integrator_L = 0, error_integrator_R = 0;
 	for (auto i = 0; i < size; i += 2, ++l_it, ++r_it)	{
-		int64_t L = fix_overflow(*l_it);
-		int64_t R = fix_overflow(*r_it);
+		auto f_L = *l_it;
+		auto f_R = *r_it;
+
+		int64_t L = fix_overflow(f_L);
+		int64_t R = fix_overflow(f_R);
+
+		if (L_out != nullptr) {
+			*L_out = fix_float_ovf(f_L);
+			++L_out;
+		}
+
+		if (R_out != nullptr) {
+			*R_out = fix_float_ovf(f_R);
+			++R_out;
+		}
 
 		auto A = (int32_t)(L / Shift16s);
 		/*
@@ -127,4 +147,32 @@ extern "C" __declspec(dllexport) void deemphasis_stereo2(
 	demux_stereo(stereo_data_In, size, L_channel_data.begin(), R_channel_data.begin());
 	filter(L_channel_data, *ctx, R_channel_data, sample_rate);
 	generate_result(stereo_data_Out, size, L_channel_data.begin(), R_channel_data.begin());
+}
+
+extern "C" __declspec(dllexport) void deemphasis_stereo2_double_out(
+	/* In */ int16_t *stereo_data_In,
+	/* Out */ int16_t *stereo_data_Out,
+	/* In */ int32_t size,
+	/* In */ int32_t sample_rate,
+
+	/* out */ double *L_out,
+	/* out */ double *R_out,
+
+	/* In */ deemphasis_stereo2_context **ctx
+) {
+	std::vector<float> L_channel_data(size / 2), R_channel_data(size / 2);
+
+	demux_stereo(stereo_data_In, size, L_channel_data.begin(), R_channel_data.begin());
+	filter(L_channel_data, *ctx, R_channel_data, sample_rate);
+	generate_result(stereo_data_Out, size, L_channel_data.begin(), R_channel_data.begin(), L_out, R_out);
+}
+
+extern "C" __declspec(dllexport) void nodeemphasis_stereo2double_out(
+	/* In */ int16_t *stereo_data_In,
+	/* In */ int32_t size,
+
+	/* out */ double *L_out,
+	/* out */ double *R_out
+) {
+	demux_stereo(stereo_data_In, size, L_out, R_out);
 }

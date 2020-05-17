@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#include <chrono> 
+
 #include <vector>
 #include <algorithm>
 
@@ -390,7 +392,7 @@ static void generate_staticstics(int32_t * first_pcm_line, int32_t * last_pcm_li
 }
 
 
-extern "C" __declspec(dllexport) void ProcessFrameErrRateGoffset(
+extern "C" __declspec(dllexport) uint64_t ProcessFrameErrRateGoffset(
 	/* uint8_t[width][heigth] */ void* frame_data,
 	/* frame size */ const int32_t heigth, const int32_t width,
 	const uint8_t threshold,
@@ -410,6 +412,8 @@ extern "C" __declspec(dllexport) void ProcessFrameErrRateGoffset(
 	/* out */ int32_t *error_lines,
 	double global_offset
 ) {
+	auto start = std::chrono::high_resolution_clock::now();
+
 	TresholdProvider initial_tresholdProvider(threshold, threshold_range);
 
 	std::vector<LineInfo> lines_info(heigth);
@@ -437,6 +441,10 @@ extern "C" __declspec(dllexport) void ProcessFrameErrRateGoffset(
 	// single thread
 	generate_staticstics(first_pcm_line, last_pcm_line, lines_info, avg_offset_start, avg_offset_end,
 		avg_pixel_per_bit, error_lines, tracking);
+
+	auto stop = std::chrono::high_resolution_clock::now();
+
+	return std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 }
 
 extern "C" __declspec(dllexport) void ProcessFrameErrRate(

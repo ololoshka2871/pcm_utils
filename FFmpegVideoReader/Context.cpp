@@ -5,9 +5,15 @@
 
 #include "Context.h"
 
+extern "C"
+{
+#include <libavdevice/avdevice.h>
+}
+
 #define snprintf(buf,len, format,...) _snprintf_s(buf, len,len, format, __VA_ARGS__)
 
-FfmpegContext::FfmpegContext(const std::string &filename) {
+FfmpegContext::FfmpegContext(const std::string &filename, const std::string &protocol) 
+	: iformat{nullptr} {
 	int32_t res;
 
 	pFormatContext = avformat_alloc_context();
@@ -15,8 +21,17 @@ FfmpegContext::FfmpegContext(const std::string &filename) {
 		throw FFmpegException{ AVERROR_BUG };
 	}
 
-
-	res = avformat_open_input(&pFormatContext, filename.c_str(), NULL, NULL);
+	std::string f(filename);
+	if (!protocol.empty()) {
+		av_device_register_all();
+		iformat = av_find_input_format(protocol.c_str());
+		if (iformat == nullptr) {
+			throw FFmpegException{ AVERROR_BUG };
+		}
+		f = "video=" + filename;
+	}
+	
+	res = avformat_open_input(&pFormatContext, f.c_str(), iformat, NULL);
 	if (res < 0) {
 		throw FFmpegException{ res };
 	}
@@ -138,6 +153,10 @@ void FfmpegContext::read_next_video_pocket() {
 	}
 }
 
+void FfmpegContext::av_device_register_all() {
+	avdevice_register_all();
+}
+
 int64_t FfmpegContext::read_frame_to(uint8_t* pixel_data) {
 	while (1) {
 		auto res = avcodec_receive_frame(pCodecContext, pFrame);
@@ -179,15 +198,19 @@ int FfmpegContext::skip_frames(int64_t frame_count) {
 void FfmpegContext::print_timestamp_to(char* s) const {
 	auto time_s = pFrame->pts * av_q2d(pFormatContext->streams[video_stream_index]->time_base);
 
-	int hour = std::floor(time_s / (60 * 60));
+	if (time_s > 0) {
+		int hour = std::floor(time_s / (60 * 60));
 
-	int minute = std::floor((time_s - (hour * 60 * 60)) / 60);
+		int minute = std::floor((time_s - (hour * 60 * 60)) / 60);
 
-	int seconds = std::floor(time_s - (hour * 60 * 60) - (minute * 60));
+		int seconds = std::floor(time_s - (hour * 60 * 60) - (minute * 60));
 
-	auto t = time_s - (hour * 60 * 60) - (minute * 60) - seconds;
+		auto t = time_s - (hour * 60 * 60) - (minute * 60) - seconds;
 
-	t *= 1000;
+		t *= 1000;
 
-	snprintf(s, 13, "%02d:%02d:%02d.%03d", hour, minute, seconds, int(t));
+		snprintf(s, 13, "%02d:%02d:%02d.%03d", hour, minute, seconds, int(t));
+	} else {
+		snprintf(s, 13, "Invalid");
+	}
 }

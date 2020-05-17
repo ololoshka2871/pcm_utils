@@ -1,6 +1,8 @@
 ﻿// dllmain.cpp : Определяет точку входа для приложения DLL.
 #include "stdafx.h"
 
+#include <locale>
+
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -25,3 +27,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #pragma comment(lib, "avfilter.lib")
 #pragma comment(lib, "postproc.lib")
 #pragma comment(lib, "swresample.lib")
+
+#pragma comment(lib, "strmiids")
+
