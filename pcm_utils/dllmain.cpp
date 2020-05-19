@@ -24,16 +24,3 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	}
 	return TRUE;
 }
-
-extern "C" __declspec(dllexport) void test_process_bool_array(void* data) {
-}
-
-extern "C" __declspec(dllexport) void test_process_2dim_array(void* data, const int32_t heigth, const int32_t width) {
-	myTwoDimArray<uint8_t> arr(data, width, heigth);
-
-	for (auto i = 0; i < arr.getwidth(); ++i) {
-		for (auto j = 0; j < arr.getheigth(); ++j) {
-			arr.element(i, j) =127;
-		}
-	}
-}

@@ -80,9 +80,6 @@
     <ClCompile Include="frame_processor.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
-    <ClCompile Include="hystogramm.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
     <ClCompile Include="matrix_constants.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>

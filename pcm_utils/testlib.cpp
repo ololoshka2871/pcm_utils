@@ -4,16 +4,6 @@
 #include <cstring>
 
 
-extern "C" __declspec(dllexport) uint16_t testfun(uint16_t arr_in[6])
-{
-	uint16_t res = 0;
-	for (auto i = 0; i < 6; ++i) {
-		res ^= arr_in[i];
-	}
-	return res;
-}
-
-
 extern "C" __declspec(dllexport) uint16_t  crc16_ccitt(uint8_t *In_data, uint32_t size) {
 	static constexpr uint16_t CRC_CCITT_TABLE[256] =
 	{

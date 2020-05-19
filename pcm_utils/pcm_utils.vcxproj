@@ -179,7 +179,6 @@
     <ClCompile Include="DataBlock.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="frame_processor.cpp" />
-    <ClCompile Include="hystogramm.cpp" />
     <ClCompile Include="matrix_constants.cpp" />
     <ClCompile Include="matrix_equations.cpp" />
     <ClCompile Include="PQ.cpp" />
