@@ -43,7 +43,20 @@ extern "C" __declspec(dllexport) int SkipFrames(
 ) {
 	if (frames_to_skip > 0) {
 		auto _ctx = static_cast<FfmpegContext*>(*ctx);
-		return _ctx->skip_frames(frames_to_skip);
+		if (_ctx->skip_frames(frames_to_skip) < 0) {
+			// reopen
+			auto fname = _ctx->getFilename();
+			auto proto = _ctx->getProtocol();
+
+			DestroyFFmpegContext((void**)ctx);
+
+			try {
+				*ctx = new FfmpegContext{ fname, proto };
+			}
+			catch (FFmpegException ex) {
+				return ex.errorCode();
+			}
+		}
 	}
 	return 0;
 }

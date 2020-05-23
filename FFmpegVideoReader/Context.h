@@ -48,9 +48,15 @@ struct FfmpegContext {
 
 	int64_t read_frame_to(uint8_t* pixel_data);
 
+	std::string getFilename() const { return filename; }
+	std::string getProtocol() const { return protocol; }
+
 private:
 	void read_next_video_pocket();
 	void unref_current_pocket();
+
+	std::string filename;
+	std::string protocol;
 
 	AVFormatContext* pFormatContext;
 	AVInputFormat *iformat;

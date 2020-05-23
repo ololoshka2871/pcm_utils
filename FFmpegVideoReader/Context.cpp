@@ -13,7 +13,7 @@ extern "C"
 #define snprintf(buf,len, format,...) _snprintf_s(buf, len,len, format, __VA_ARGS__)
 
 FfmpegContext::FfmpegContext(const std::string &filename, const std::string &protocol) 
-	: iformat{nullptr} {
+	: filename(filename), protocol(protocol), iformat{nullptr} {
 	int32_t res;
 
 	pFormatContext = avformat_alloc_context();
