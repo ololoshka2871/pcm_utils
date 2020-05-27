@@ -25,16 +25,6 @@ struct LStrHandle {
 	char symbols[];
 };
 
-
-struct FFmpegException : std::exception {
-	FFmpegException() = default;
-	FFmpegException(int32_t code) : error(code) {}
-
-	int32_t errorCode() const {	return error; }
-private:
-	int32_t error;
-};
-
 struct FfmpegContext {
 	FfmpegContext(const std::string &filename, const std::string &protocol = "");
 	~FfmpegContext();

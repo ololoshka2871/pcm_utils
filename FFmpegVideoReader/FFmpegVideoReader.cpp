@@ -4,6 +4,7 @@
 #include "stdafx.h"
 
 #include "Context.h"
+#include "FFmpegException.h"
 
 extern "C" __declspec(dllexport) void CreateFFmpegContext(char* filename, char* protocol, void **pCtx, int *error_code) {
 	try {
@@ -80,5 +81,6 @@ extern "C" __declspec(dllexport) int64_t GetNextFrame(
 		return result;
 	} catch (FFmpegException ex) {
 		*error_code = ex.errorCode();
+		return 0;
 	}
 }
