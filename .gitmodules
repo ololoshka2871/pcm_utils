@@ -1,3 +1,6 @@
 [submodule "eigen"]
 	path = eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "PlayerWriter/concurrentqueue"]
+	path = PlayerWriter/concurrentqueue
+	url = https://github.com/cameron314/concurrentqueue.git
