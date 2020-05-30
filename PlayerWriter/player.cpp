@@ -2,20 +2,65 @@
 
 #include <cstdint>
 #include <algorithm>
-#include <thread>
 
 #include "Player.h"
 
 // http://portaudio.com/docs/v19-doxydocs/writing_a_callback.html
 
-extern "C" __declspec(dllexport) void initPlayerContext(int32_t sample_rate, void** ctx, int* errCode) {
+static PaStreamParameters getOutputByIndex(int index) {
+	if (index >= Pa_GetDeviceCount()) {
+		throw ENOMEM;
+	}
+
+	if (index == 0) {
+		index = Pa_GetDefaultOutputDevice();
+		auto di = Pa_GetDeviceInfo(index);
+
+		return PaStreamParameters{
+			index,
+			2,
+			paInt16,
+			di->defaultHighOutputLatency,
+			nullptr
+		};
+	} else {
+		auto numDevices = Pa_GetDeviceCount();
+
+		int out_dev_index = -1;
+		for (auto i = 0; i < numDevices; ++i) {
+			auto info = Pa_GetDeviceInfo(i);
+
+			if (info->maxOutputChannels > 0) {
+				out_dev_index++;
+				if (out_dev_index == index) {
+					return PaStreamParameters{
+						i,
+						2,
+						paInt16,
+						info->defaultHighOutputLatency,
+						nullptr
+					};
+				}
+			}
+		}
+
+		throw ENODEV;
+	}
+}
+
+extern "C" __declspec(dllexport) void initPlayerContext(int32_t outpul_index, int32_t sample_rate, 
+	int32_t buf_size, void** ctx, int* errCode) {
 	try {
+		if (buf_size < 1) {
+			throw ENOMEM;
+		}
+
 		auto err = Pa_Initialize();
 		if (err != paNoError) {
 			throw err;
 		}
 
-		*ctx = new Player(sample_rate);
+		*ctx = new Player(outpul_index, buf_size, sample_rate);
 		*errCode = 0;
 	}
 	catch (PaError err) {
@@ -33,18 +78,18 @@ extern "C" __declspec(dllexport) void releasePlayerContext(void** ctx) {
 }
 
 extern "C" __declspec(dllexport) void Play(void** ctx, uint16_t samples[], uint32_t samples_count) {
-	static_cast<Player*>(*ctx)->play(samples, samples_count);
+	auto _this = static_cast<Player*>(*ctx);
+	_this->play(samples, samples_count);
 }
 
-Player::Player(int32_t sample_rate) : playQueue{ 10 }, currentelement{new audioContainer } {
-	auto default_device = Pa_GetDefaultOutputDevice();
-	PaStreamParameters outputParameters{
-		default_device,
-		2,
-		paInt16,
-		Pa_GetDeviceInfo(default_device)->defaultHighOutputLatency,
-		nullptr
-	};
+extern "C" __declspec(dllexport) void Mute(void** ctx) {
+	auto _this = static_cast<Player*>(*ctx);
+	_this->Mute();
+}
+
+Player::Player(int32_t output_index, int32_t buf_size, int32_t sample_rate) 
+	: playQueue{ buf_size }, currentelement{new audioContainer } {
+	auto  outputParameters = getOutputByIndex(output_index);
 
 	auto err = Pa_OpenStream(
 		&stream,
@@ -59,7 +104,7 @@ Player::Player(int32_t sample_rate) : playQueue{ 10 }, currentelement{new audioC
 			PaStreamCallbackFlags statusFlags,
 			void* userData) {
 		return static_cast<Player*>(userData)->callback(input, output, frameCount, timeInfo, statusFlags);
-	}, /* no callback, use blocking API */
+	},
 		this); /* no callback, so no callback userData */
 	if (err != paNoError) {
 		throw err;
@@ -83,6 +128,12 @@ void Player::play(uint16_t samples[], uint32_t samples_count) {
 	playQueue.push(audioContainer{ samples, samples_count });
 }
 
+void Player::Mute() {
+	if (!currentelement->is_mute()) {
+		playQueue.push(audioContainer::mute());
+	}
+}
+
 int Player::callback(const void* input, void* output, unsigned long frameCount,
 	const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags) {
 
@@ -94,12 +145,19 @@ int Player::callback(const void* input, void* output, unsigned long frameCount,
 			if (read == need_to_read) {
 				return paContinue; // ok!
 			}
-			output = static_cast<void*>(static_cast<uint16_t*>(output) + read * audioContainer::samples_pre_frame);
+			output = static_cast<void*>(static_cast<uint16_t*>(output) + 
+				read * audioContainer::samples_pre_frame);
 			need_to_read -= read;
 		} else {
-			playQueue.pop(*currentelement);
-			if (currentelement->is_end()) {
-				return paAbort;
+			if (currentelement->is_mute() && playQueue.empty()) {
+				std::memset(output, 0,
+					frameCount * size_t(audioContainer::samples_pre_frame * sizeof(uint16_t)));
+				return paContinue;
+			} else {
+				playQueue.pop(*currentelement);
+				if (currentelement->is_end()) {
+					return paAbort;
+				}
 			}
 		}
 	}
