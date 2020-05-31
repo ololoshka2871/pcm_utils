@@ -11,29 +11,27 @@
 extern "C" __declspec(dllexport) uint64_t parce_frame(
 	/* uint8_t[width][heigth] */ void* frame_data,
 	/* frame size */ const int32_t heigth, const int32_t width,
-	const uint8_t threshold,
-	const uint8_t threshold_range,
-	const uint32_t max_threads,
 
 	/* out uint8_t[width][heigth] */ void* out_data,
-	/* out avg. */ int32_t * avg_offset_start,
-	/* out avg. */ int32_t * avg_offset_end,
 	/* out avg. */ double* avg_pixel_per_bit,
-	/* out */ int32_t * tracking,
 
 	/* out */ int32_t * first_pcm_line,
 	/* out */ int32_t * last_pcm_line,
-	const bool hard_verify_sync,
-	const uint32_t width_divider,
 	/* out */ int32_t * error_lines,
-	double global_offset
+
+	/* in/out */ uint16_t * data_start_coord,
+	/* in/out */ uint16_t * data_stop_coord,
+	/* in/out */ uint8_t  * ref_level,
+	/* in */ uint8_t enable_shift
 ) {
 	static constexpr uint32_t DATA_BYTES_PER_PCM_STRING = 16;
 
 	auto start = std::chrono::high_resolution_clock::now();
 
 	STC007Binarizer binarizer;
-	binarizer.setReferenceLevel(threshold);
+	binarizer.setDataCoordinates(*data_start_coord, *data_stop_coord);
+	binarizer.setReferenceLevel(*ref_level);
+	binarizer.setPixelShiftRetry(!!enable_shift);
 
 	myTwoDimArray<uint8_t> indata(frame_data, width, heigth);
 	myTwoDimArray<uint8_t> outdata(out_data, DATA_BYTES_PER_PCM_STRING * CHAR_BIT, heigth);
@@ -71,14 +69,13 @@ extern "C" __declspec(dllexport) uint64_t parce_frame(
 				_avg_offset_end += outline.data_stop_coord;
 				_avg_threshold += outline.ref_level;
 				success_lines++;
-
-				if (*first_pcm_line < 0) {
-					*first_pcm_line = i;
-				}
+			} else {
 				*last_pcm_line = -1;
-			}
-			else {
 				++(*error_lines);
+			}
+
+			if (*first_pcm_line < 0) {
+				*first_pcm_line = i;
 			}
 		} else {
 			if (*first_pcm_line >= 0 && *last_pcm_line < 0) {
@@ -91,10 +88,10 @@ extern "C" __declspec(dllexport) uint64_t parce_frame(
 		*last_pcm_line = heigth;
 	}
 
-	*avg_offset_start = _avg_offset_start / success_lines;
-	*avg_offset_end = _avg_offset_end / success_lines;
-	*avg_pixel_per_bit = (*avg_offset_end - *avg_offset_start) / (DATA_BYTES_PER_PCM_STRING * double(CHAR_BIT));
-	*tracking = _avg_threshold / success_lines;
+	*data_start_coord = _avg_offset_start / success_lines;
+	*data_stop_coord = _avg_offset_end / success_lines;
+	*avg_pixel_per_bit = (*data_stop_coord - *data_start_coord) / (DATA_BYTES_PER_PCM_STRING * double(CHAR_BIT));
+	*ref_level = _avg_threshold / success_lines;
 
 	auto stop = std::chrono::high_resolution_clock::now();
 
