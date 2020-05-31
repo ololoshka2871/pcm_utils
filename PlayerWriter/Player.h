@@ -17,8 +17,15 @@ struct Player {
 		};
 
 		audioContainer() : data{}, offset{0} {}
-		audioContainer(uint16_t samples[], uint32_t samples_count)
-			: data{ &samples[0], &samples[samples_count] }, offset{0} {}
+		audioContainer(int16_t samples[], uint32_t samples_count, double volume)
+			: data{ &samples[0], &samples[samples_count] }, offset{0} {
+			if (volume < 0) { volume = 0; }
+			if (volume > 1.0) { volume = 1.0; }
+
+			std::for_each(data.begin(), data.end(), [volume](float& element) {
+				element = element / (0xFFFF >> 1) * volume; 
+			});
+		}
 
 		size_t avalable() const { return offset >= 0 
 			? data.size() - offset 
@@ -43,14 +50,14 @@ struct Player {
 		bool is_mute() const { return offset == C_MUTE; }
 
 	private:
-		std::vector<uint16_t> data;
+		std::vector<float> data;
 		int32_t offset;
 	};
 
 	Player(int32_t outpul_index, int32_t buf_size, int32_t sample_rate);
 	~Player();
 
-	void play(uint16_t samples[], uint32_t samples_count);
+	void play(int16_t samples[], uint32_t samples_count, double volume);
 	void Mute();
 
 private:

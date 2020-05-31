@@ -19,7 +19,7 @@ static PaStreamParameters getOutputByIndex(int index) {
 		return PaStreamParameters{
 			index,
 			2,
-			paInt16,
+			paFloat32,
 			di->defaultHighOutputLatency,
 			nullptr
 		};
@@ -36,7 +36,7 @@ static PaStreamParameters getOutputByIndex(int index) {
 					return PaStreamParameters{
 						i,
 						2,
-						paInt16,
+						paFloat32,
 						info->defaultHighOutputLatency,
 						nullptr
 					};
@@ -77,9 +77,15 @@ extern "C" __declspec(dllexport) void releasePlayerContext(void** ctx) {
 	Pa_Terminate();
 }
 
-extern "C" __declspec(dllexport) void Play(void** ctx, uint16_t samples[], uint32_t samples_count) {
+extern "C" __declspec(dllexport) void Play(void** ctx, int16_t samples[], uint32_t samples_count) {
 	auto _this = static_cast<Player*>(*ctx);
-	_this->play(samples, samples_count);
+	_this->play(samples, samples_count, 1.0);
+}
+
+extern "C" __declspec(dllexport) void PlayVol(void** ctx, int16_t samples[], uint32_t samples_count,
+	double volume) {
+	auto _this = static_cast<Player*>(*ctx);
+	_this->play(samples, samples_count, volume);
 }
 
 extern "C" __declspec(dllexport) void Mute(void** ctx) {
@@ -124,8 +130,8 @@ Player::~Player() {
 	Pa_CloseStream(stream);
 }
 
-void Player::play(uint16_t samples[], uint32_t samples_count) {
-	playQueue.push(audioContainer{ samples, samples_count });
+void Player::play(int16_t samples[], uint32_t samples_count, double volume) {
+	playQueue.push(audioContainer{ samples, samples_count, volume });
 }
 
 void Player::Mute() {
@@ -145,7 +151,7 @@ int Player::callback(const void* input, void* output, unsigned long frameCount,
 			if (read == need_to_read) {
 				return paContinue; // ok!
 			}
-			output = static_cast<void*>(static_cast<uint16_t*>(output) + 
+			output = static_cast<void*>(static_cast<float*>(output) + 
 				read * audioContainer::samples_pre_frame);
 			need_to_read -= read;
 		} else {
@@ -167,7 +173,7 @@ size_t Player::audioContainer::read_to(void* ptr, size_t frame_count) {
 	auto begin = data.cbegin() + offset;
 	auto to_read = std::min<size_t>(frame_count * samples_pre_frame, avalable());
 	auto end = begin + to_read;
-	std::copy(begin, end, static_cast<uint16_t*>(ptr));
+	std::copy(begin, end, static_cast<float*>(ptr));
 	offset += to_read;
 	return to_read / samples_pre_frame;
 }
