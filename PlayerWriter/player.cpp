@@ -137,12 +137,7 @@ Player::~Player() {
 	}
 }
 
-void Player::play(int16_t samples[], uint32_t samples_count, double volume, int32_t prefill_zeros) {
-	if (prefill_zeros > 0) {
-		playQueue.push(audioContainer::zero(prefill_zeros));
-	}
-	playQueue.push(audioContainer{ samples, samples_count, volume });
-}
+
 
 void Player::Mute() {
 	if (!currentelement->is_mute()) {

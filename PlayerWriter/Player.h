@@ -18,10 +18,26 @@ struct Player {
         };
 
         audioContainer() : data{}, offset{0} {}
-        audioContainer(int16_t samples[], uint32_t samples_count, double volume)
-            : data{ &samples[0], &samples[samples_count] }, offset{0} {
+
+        void update_volume(double &volume) {
             if (volume < 0) { volume = 0; }
             if (volume > 1.0) { volume = 1.0; }
+        }
+
+        audioContainer(const float samples[], uint32_t samples_count, double volume)
+            : data{ &samples[0], &samples[samples_count] }, offset{0} {
+            update_volume(volume);
+
+            if (volume != 1.0) {
+                std::for_each(data.begin(), data.end(), [volume](float& element) {
+                    element *= volume;
+                });
+            }
+        }
+
+        audioContainer(const int16_t samples[], uint32_t samples_count, double volume)
+            : data{ &samples[0], &samples[samples_count] }, offset{0} {
+            update_volume(volume);
 
             std::for_each(data.begin(), data.end(), [volume](float& element) {
                 element = element / (0xFFFF >> 1) * volume;
@@ -64,7 +80,13 @@ struct Player {
     Player(int32_t outpul_index, uint32_t buf_size, int32_t sample_rate);
     ~Player();
 
-    void play(int16_t samples[], uint32_t samples_count, double volume, int32_t prefill_zeros = 0);
+    template<typename T>
+    void play(T samples[], uint32_t samples_count, double volume = 1.0, int32_t prefill_zeros = 0) {
+        if (prefill_zeros > 0) {
+            playQueue.push(audioContainer::zero(prefill_zeros));
+        }
+        playQueue.push(audioContainer{ samples, samples_count, volume });
+    }
     void Mute();
 
 private:
