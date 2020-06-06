@@ -83,9 +83,9 @@ extern "C" __declspec(dllexport) void Play(void** ctx, int16_t samples[], uint32
 }
 
 extern "C" __declspec(dllexport) void PlayVol(void** ctx, int16_t samples[], uint32_t samples_count,
-	double volume) {
+	double volume, int32_t prefil_zeros) {
 	auto _this = static_cast<Player*>(*ctx);
-	_this->play(samples, samples_count, volume);
+	_this->play(samples, samples_count, volume, prefil_zeros);
 }
 
 extern "C" __declspec(dllexport) void Mute(void** ctx) {
@@ -94,7 +94,7 @@ extern "C" __declspec(dllexport) void Mute(void** ctx) {
 }
 
 Player::Player(int32_t output_index, int32_t buf_size, int32_t sample_rate) 
-	: playQueue{ buf_size }, currentelement{new audioContainer } {
+	: playQueue{ buf_size }, end_sem{0}, currentelement{ new audioContainer } {
 	auto  outputParameters = getOutputByIndex(output_index);
 
 	auto err = Pa_OpenStream(
@@ -124,13 +124,19 @@ Player::Player(int32_t output_index, int32_t buf_size, int32_t sample_rate)
 
 Player::~Player() {
 	playQueue.push(audioContainer::eof());
-	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	end_sem.wait();
 
 	Pa_StopStream(stream);
-	Pa_CloseStream(stream);
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	while (Pa_CloseStream(stream) != paNoError) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
 }
 
-void Player::play(int16_t samples[], uint32_t samples_count, double volume) {
+void Player::play(int16_t samples[], uint32_t samples_count, double volume, int32_t prefill_zeros) {
+	if (prefill_zeros > 0) {
+		playQueue.push(audioContainer::zero(prefill_zeros));
+	}
 	playQueue.push(audioContainer{ samples, samples_count, volume });
 }
 
@@ -156,12 +162,12 @@ int Player::callback(const void* input, void* output, unsigned long frameCount,
 			need_to_read -= read;
 		} else {
 			if (currentelement->is_mute() && playQueue.empty()) {
-				std::memset(output, 0,
-					frameCount * size_t(audioContainer::samples_pre_frame * sizeof(uint16_t)));
+				std::memset(output, 0, need_to_read * size_t(audioContainer::samples_pre_frame * sizeof(float)));
 				return paContinue;
 			} else {
 				playQueue.pop(*currentelement);
 				if (currentelement->is_end()) {
+					end_sem.post();
 					return paAbort;
 				}
 			}

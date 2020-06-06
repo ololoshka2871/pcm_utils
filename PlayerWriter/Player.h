@@ -46,10 +46,16 @@ struct Player {
 			return res;
 		}
 
+		static audioContainer zero(int32_t zero_frame_count) {
+			return audioContainer(zero_frame_count * samples_pre_frame);
+		}
+
 		bool is_end() const { return offset == C_EOF; }
 		bool is_mute() const { return offset == C_MUTE; }
 
 	private:
+		audioContainer(int32_t zero_frame_count) : data(size_t(zero_frame_count)), offset{0} {}
+
 		std::vector<float> data;
 		int32_t offset;
 	};
@@ -57,12 +63,13 @@ struct Player {
 	Player(int32_t outpul_index, int32_t buf_size, int32_t sample_rate);
 	~Player();
 
-	void play(int16_t samples[], uint32_t samples_count, double volume);
+	void play(int16_t samples[], uint32_t samples_count, double volume, int32_t prefill_zeros = 0);
 	void Mute();
 
 private:
 	PaStream* stream;
 	LockingQueue<audioContainer> playQueue;
+	semaphore end_sem;
 
 	std::unique_ptr<audioContainer> currentelement;
 
