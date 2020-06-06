@@ -1,9 +1,5 @@
 ﻿// dllmain.cpp : Определяет точку входа для приложения DLL.
-#include "stdafx.h"
-
-#include <cstring>
-
-#include "LabViewArray.h"
+#include <Windows.h>
 
 
 BOOL APIENTRY DllMain( HMODULE hModule,
@@ -20,24 +16,4 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         break;
     }
     return TRUE;
-}
-
-struct s{
-	INT32 A;
-	INT64 B;
-	double C;
-	LabViewArray<UINT8> **data;
-
-	s& operator=(const s& lr) {
-		A = lr.A;
-		B = lr.B;
-		C = lr.C;
-		**data = **lr.data;
-		return *this;
-	}
-};
-
-
-extern "C"  __declspec(dllexport) void test_struct_in_out(s* in, s* out) {
-	*out = *in;
 }

@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #include "stc007line.h"
 
 // Table for 0x1021 polynome CRC16.

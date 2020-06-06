@@ -1,7 +1,3 @@
-#ifdef MSVC
-#include "pch.h"
-#endif
-
 #include <cstdint>
 #include <algorithm>
 #include <thread>

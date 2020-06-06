@@ -1,6 +1,3 @@
-
-#include "pch.h"
-
 #include <chrono>
 #include <algorithm>
 
@@ -22,7 +19,8 @@ extern "C" __declspec(dllexport) uint64_t parce_frame(
 	/* in/out */ uint16_t * data_start_coord,
 	/* in/out */ uint16_t * data_stop_coord,
 	/* in/out */ uint8_t  * ref_level,
-	/* in */ uint8_t enable_shift
+	/* in */ uint8_t enable_shift,
+	/* in */ uint8_t enable_level_sweep
 ) {
 	static constexpr uint32_t DATA_BYTES_PER_PCM_STRING = 16;
 
@@ -32,6 +30,7 @@ extern "C" __declspec(dllexport) uint64_t parce_frame(
 	binarizer.setDataCoordinates(*data_start_coord, *data_stop_coord);
 	binarizer.setReferenceLevel(*ref_level);
 	binarizer.setPixelShiftRetry(!!enable_shift);
+	binarizer.setRefLevelSweep(!!enable_level_sweep);
 
 	myTwoDimArray<uint8_t> indata(frame_data, width, heigth);
 	myTwoDimArray<uint8_t> outdata(out_data, DATA_BYTES_PER_PCM_STRING * CHAR_BIT, heigth);
@@ -61,8 +60,10 @@ extern "C" __declspec(dllexport) uint64_t parce_frame(
 
 		if (outline.hasMarkers()) {
 			if (outline.isCRCvalid()) {
-				binarizer.setDataCoordinates(outline.data_start_coord, outline.data_stop_coord);
-				binarizer.setReferenceLevel(outline.ref_level);
+				if (outline.ref_level_sweeped && !!enable_level_sweep) {
+					binarizer.setDataCoordinates(outline.data_start_coord, outline.data_stop_coord);
+					binarizer.setReferenceLevel(outline.ref_level);
+				}
 
 				// stat
 				_avg_offset_start += outline.data_start_coord;

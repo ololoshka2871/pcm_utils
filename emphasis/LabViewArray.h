@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Windows.h>
+
 template <typename T>
 struct LabViewArray {
 	UINT32 Size;

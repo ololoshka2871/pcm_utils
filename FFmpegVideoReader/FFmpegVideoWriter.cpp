@@ -1,14 +1,10 @@
-﻿#ifdef MSVC
-#include "stdafx.h"
-#endif
-
-#include <string>
+﻿#include <string>
 #include <cstring>
 
 #include "WriteContext.h"
 #include "FFmpegException.h"
 
-#ifdef MSVC
+#ifdef _MSC_VER
 #define DLLEXPORT __declspec(dllexport)
 #else
 #define DLLEXPORT

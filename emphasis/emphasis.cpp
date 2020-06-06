@@ -1,7 +1,4 @@
 ﻿// emphasis.cpp : Определяет экспортированные функции для приложения DLL.
-//
-
-#include "stdafx.h"
 
 #include <cmath>
 

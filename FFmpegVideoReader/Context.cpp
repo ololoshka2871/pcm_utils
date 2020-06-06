@@ -1,7 +1,3 @@
-#ifdef MSVC
-#include "stdafx.h"
-#endif
-
 #include <cmath>
 #include <cstring>
 

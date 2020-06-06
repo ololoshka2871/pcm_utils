@@ -1,6 +1,4 @@
-﻿#include "stdafx.h"
-
-#include <cstdint>
+﻿#include <cstdint>
 #include <cstring>
 
 

@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "matrix_equations.h"
 
 Sample operator*(const uint8_t M[Sample::bitsInSample][Sample::bitsInSample], const Sample& vector) {

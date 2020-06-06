@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #include "videoline.h"
 
 VideoLine::VideoLine()

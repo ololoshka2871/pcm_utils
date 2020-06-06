@@ -1,5 +1,3 @@
-#include "stdafx.h"
-
 #include <cstdint>
 #include <utility>
 #include <cassert>

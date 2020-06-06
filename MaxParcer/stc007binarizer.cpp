@@ -1,5 +1,3 @@
-#include "pch.h"
-
 #include <chrono>
 
 #include "stc007binarizer.h"

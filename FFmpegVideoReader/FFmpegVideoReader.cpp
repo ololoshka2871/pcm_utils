@@ -1,14 +1,10 @@
 ﻿// FFmpegVideoReader.cpp : Определяет экспортированные функции для приложения DLL.
 //
 
-#ifdef MSVC
-#include "stdafx.h"
-#endif
-
 #include "Context.h"
 #include "FFmpegException.h"
 
-#ifdef MSVC
+#ifdef _MSC_VER
 #define DLLEXPORT __declspec(dllexport)
 #else
 #define DLLEXPORT

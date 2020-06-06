@@ -1,6 +1,4 @@
-﻿#include "stdafx.h"
-
-#include <algorithm>
+﻿#include <algorithm>
 #include <cassert>
 #include <cstring>
 

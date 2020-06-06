@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "matrix_constants.h"
 
 #if 1
