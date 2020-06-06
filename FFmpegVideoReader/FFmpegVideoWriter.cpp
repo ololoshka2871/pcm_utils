@@ -1,10 +1,18 @@
-﻿#include "stdafx.h"
+﻿#ifdef MSVC
+#include "stdafx.h"
+#endif
 
 #include <string>
+#include <cstring>
 
 #include "WriteContext.h"
 #include "FFmpegException.h"
 
+#ifdef MSVC
+#define DLLEXPORT __declspec(dllexport)
+#else
+#define DLLEXPORT
+#endif
 
 // https://github.com/FFmpeg/FFmpeg/blob/master/doc/examples/transcoding.c
 // https://github.com/FFmpeg/FFmpeg/blob/master/doc/examples/muxing.c
@@ -162,7 +170,7 @@ static void close_stream(AVFormatContext *oc, OutputStream *ost) {
 	swr_free(&ost->swr_ctx);
 }
 
-extern "C" __declspec(dllexport) void FfmpegCreateWriteContext(char* filename, char* codec,
+extern "C" DLLEXPORT void FfmpegCreateWriteContext(char* filename, char* codec,
 	int32_t heigth, int32_t width, int64_t bitrate, uint8_t PAL, int32_t src_buf_width, void **pCtx, int *error_code) {
 	try {
 		*pCtx = new FfmpegWriteContext{ std::string(filename), std::string(codec), heigth, width, bitrate, !!PAL, src_buf_width };
@@ -173,12 +181,12 @@ extern "C" __declspec(dllexport) void FfmpegCreateWriteContext(char* filename, c
 	}
 }
 
-extern "C" __declspec(dllexport) void FfmpegDestroyWriteContext(void** pCtx) {
+extern "C" DLLEXPORT void FfmpegDestroyWriteContext(void** pCtx) {
 	auto _ctx = static_cast<FfmpegWriteContext*>(*pCtx);
 	delete _ctx;
 }
 
-extern "C" __declspec(dllexport) void WriteFrame(void** pCtx,
+extern "C" DLLEXPORT void WriteFrame(void** pCtx,
 	/* in */  uint8_t* frame_data,
 	/* out */ int *error_code) {
 	try {

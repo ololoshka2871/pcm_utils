@@ -1,12 +1,20 @@
 ﻿// FFmpegVideoReader.cpp : Определяет экспортированные функции для приложения DLL.
 //
 
+#ifdef MSVC
 #include "stdafx.h"
+#endif
 
 #include "Context.h"
 #include "FFmpegException.h"
 
-extern "C" __declspec(dllexport) void CreateFFmpegContext(char* filename, char* protocol, void **pCtx, int *error_code) {
+#ifdef MSVC
+#define DLLEXPORT __declspec(dllexport)
+#else
+#define DLLEXPORT
+#endif
+
+extern "C" DLLEXPORT void CreateFFmpegContext(char* filename, char* protocol, void **pCtx, int *error_code) {
 	try {
 		*pCtx = new FfmpegContext{ std::string(filename), std::string(protocol) };
 		*error_code = 0;
@@ -16,12 +24,12 @@ extern "C" __declspec(dllexport) void CreateFFmpegContext(char* filename, char* 
 	}
 }
 
-extern "C" __declspec(dllexport) void DestroyFFmpegContext(void** pCtx) {
+extern "C" DLLEXPORT void DestroyFFmpegContext(void** pCtx) {
 	auto _ctx = static_cast<FfmpegContext*>(*pCtx);
 	delete _ctx;
 }
 
-extern "C" __declspec(dllexport) void GetFrameSize(
+extern "C" DLLEXPORT void GetFrameSize(
 	/* In */ FfmpegContext **ctx, 
 	/* out */ int32_t *weigth,
 	/* out */ int32_t *heigth
@@ -30,7 +38,7 @@ extern "C" __declspec(dllexport) void GetFrameSize(
 	std::tie(*weigth, *heigth) = _ctx->get_frame_size();
 }
 
-extern "C" __declspec(dllexport) void GetFrameCount(
+extern "C" DLLEXPORT void GetFrameCount(
 	/* In */ FfmpegContext **ctx,
 	/* out */ int32_t *frame_count
 ) {
@@ -38,7 +46,7 @@ extern "C" __declspec(dllexport) void GetFrameCount(
 	*frame_count = _ctx->get_frame_count();
 }
 
-extern "C" __declspec(dllexport) int SkipFrames(
+extern "C" DLLEXPORT int SkipFrames(
 	/* In */ FfmpegContext **ctx,
 	/* out */ int64_t frames_to_skip
 ) {
@@ -62,7 +70,7 @@ extern "C" __declspec(dllexport) int SkipFrames(
 	return 0;
 }
 
-extern "C" __declspec(dllexport) int64_t GetNextFrame(
+extern "C" DLLEXPORT int64_t GetNextFrame(
 	/* In */ FfmpegContext **ctx,
 
 	/* out */ uint8_t *pixel_data,
