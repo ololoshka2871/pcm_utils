@@ -2,11 +2,7 @@
 
 #include <cstdint>
 
-#ifdef _MSC_VER
-#define DLLEXPORT DLLEXPORT
-#else
-#define DLLEXPORT
-#endif
+#include "DLLEXPORT.h"
 
 /**
  * blocks - двумерный массив bool 8 строк, 14 битов
