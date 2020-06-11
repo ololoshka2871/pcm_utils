@@ -284,7 +284,7 @@ static Sample restore_single(DataBlock &line, DataBlock::ElementNames err_index)
 /****************************************************************************************/
 
 
-extern "C" __declspec(dllexport) void RestoreByQ(
+extern "C" DLLEXPORT void RestoreByQ(
 	void* blocks /* uint8_t[8][14] */,
 	int32_t index1, int index2,
 	/* out */ void* restored_block1 /* uint8_t[14] */,
@@ -349,7 +349,7 @@ extern "C" __declspec(dllexport) void RestoreByQ(
 }
 
 // Индейцы неправильные
-extern "C" __declspec(dllexport) void RestoreByQ_FixedBlockOut(
+extern "C" DLLEXPORT void RestoreByQ_FixedBlockOut(
 	void* blocks /* uint8_t[8][14] */,
 	int32_t index1, int index2,
 	/* out */ void* restored_blocks /*uint8_t[8][14] */
@@ -411,7 +411,7 @@ extern "C" __declspec(dllexport) void RestoreByQ_FixedBlockOut(
 }
 
 
-extern "C" __declspec(dllexport) void GenerateP(
+extern "C" DLLEXPORT void GenerateP(
 	void* blocks /* uint8_t[8][14] */,
 	/* out */ void* P /* uint8_t[14] */
 ) {
@@ -422,7 +422,7 @@ extern "C" __declspec(dllexport) void GenerateP(
 }
 
 
-extern "C" __declspec(dllexport) void GenerateQ(
+extern "C" DLLEXPORT void GenerateQ(
 	void* blocks /* uint8_t[8][14] */,
 	/* out */ void* Q /* uint8_t[14] */
 ) {
@@ -432,7 +432,7 @@ extern "C" __declspec(dllexport) void GenerateQ(
 	*_Q = line.Correct_Q().Reversed();
 }
 
-extern "C" __declspec(dllexport) void GeneratePQ(
+extern "C" DLLEXPORT void GeneratePQ(
 	void* blocks /* uint8_t[8][14] */,
 	/* out */ void* P /* uint8_t[14] */,
 	/* out */ void* Q /* uint8_t[14] */

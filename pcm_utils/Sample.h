@@ -2,11 +2,16 @@
 
 #include <cstdint>
 #include <initializer_list>
+#include <cstdlib>
 
+#ifdef _MSC_VER
 #ifdef _EXPORTING
 #define CLASS_DECLSPEC __declspec(dllexport)
 #else
 #define CLASS_DECLSPEC __declspec(dllimport)
+#endif
+#else
+#define CLASS_DECLSPEC
 #endif
 
 struct CLASS_DECLSPEC Sample {
