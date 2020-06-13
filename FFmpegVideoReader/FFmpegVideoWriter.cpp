@@ -20,11 +20,12 @@
 static void add_stream(OutputStream *ost, AVFormatContext *oc,	AVCodec **codec, const std::string &codec_id,
     int32_t heigth, int32_t width, int64_t bitrate, AVRational& timebase, AVRational& fps) {
     AVCodecContext *c;
+    int i;
 
     /* find the encoder */
     *codec = avcodec_find_encoder_by_name(codec_id.c_str());
     if (!(*codec)) {
-        throw FFmpegException{ AVERROR_BUG };
+        throw FFmpegException{ AVERROR_ENCODER_NOT_FOUND };
     }
 
     ost->st = avformat_new_stream(oc, NULL);
