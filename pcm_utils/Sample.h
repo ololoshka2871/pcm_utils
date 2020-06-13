@@ -4,7 +4,7 @@
 #include <initializer_list>
 #include <cstdlib>
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && defined(BUILD_DLL)
 #ifdef _EXPORTING
 #define CLASS_DECLSPEC __declspec(dllexport)
 #else

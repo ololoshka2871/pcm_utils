@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef _MSC_VER
-#define DLLEXPORT DLLEXPORT
+#define DLLEXPORT __declspec(dllexport)
 #else
 #define DLLEXPORT
 #endif
