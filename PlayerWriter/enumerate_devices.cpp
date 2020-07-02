@@ -1,6 +1,7 @@
 
 #include <cstdint>
 #include <list>
+#include <iterator>
 #include <string>
 #include <algorithm>
 #include <sstream>
