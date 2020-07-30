@@ -8,11 +8,7 @@ class semaphore
 {
 public:
     semaphore(unsigned int count) : m_count(count) {}
-    semaphore(const semaphore&&) = delete;
-    semaphore(semaphore&&) = delete;
-    semaphore& operator = (const semaphore&) = delete;
-    semaphore& operator = (semaphore&&) = delete;
-    ~semaphore() = default;
+    ~semaphore() {}
 
     void post()
     {
@@ -32,6 +28,8 @@ private:
     std::mutex m_mutex;
     std::condition_variable m_cv;
     unsigned int m_count;
+
+    semaphore(const semaphore&);
 };
 
 template<typename T>
@@ -42,11 +40,6 @@ public:
         : m_size(size), m_pushIndex(0), m_popIndex(0), m_count(0),
         m_data((T*)operator new(size * sizeof(T))),
         m_openSlots(size), m_fullSlots(0) {}
-
-    LockingQueue(const LockingQueue&) = delete;
-    LockingQueue(LockingQueue&&) = delete;
-    LockingQueue& operator = (const LockingQueue&) = delete;
-    LockingQueue& operator = (LockingQueue&&) = delete;
 
     ~LockingQueue()
     {
@@ -100,7 +93,7 @@ public:
         m_fullSlots.wait();
         {
             std::lock_guard<std::mutex> lock(m_cs);
-            std::swap(item,  m_data[m_popIndex]);
+            std::swap(item, m_data[m_popIndex]);
             m_data[m_popIndex].~T();
             m_popIndex = ++m_popIndex % m_size;
             --m_count;
@@ -125,4 +118,6 @@ private:
     semaphore m_openSlots;
     semaphore m_fullSlots;
     std::mutex m_cs;
+
+    LockingQueue(const LockingQueue&);
 };

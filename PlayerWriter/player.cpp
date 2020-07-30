@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <thread>
 #include <cstring>
+#include <cerrno>
 
 #include "Player.h"
 
@@ -16,14 +17,16 @@ static PaStreamParameters getOutputByIndex(int index) {
         index = Pa_GetDefaultOutputDevice();
         auto di = Pa_GetDeviceInfo(index);
 
-        return PaStreamParameters{
-            index,
-            2,
-            paFloat32,
-            di->defaultHighOutputLatency,
-            nullptr
-        };
-    } else {
+        PaStreamParameters res;
+        res.device = 1;
+        res.channelCount = 2;
+        res.sampleFormat = paFloat32;
+        res.suggestedLatency = di->defaultHighOutputLatency;
+        res.hostApiSpecificStreamInfo = NULL;
+
+        return res;
+    }
+    else {
         auto numDevices = Pa_GetDeviceCount();
 
         int out_dev_index = -1;
@@ -33,13 +36,13 @@ static PaStreamParameters getOutputByIndex(int index) {
             if (info->maxOutputChannels > 0) {
                 out_dev_index++;
                 if (out_dev_index == index) {
-                    return PaStreamParameters{
-                        i,
-                        2,
-                        paFloat32,
-                        info->defaultHighOutputLatency,
-                        nullptr
-                    };
+                    PaStreamParameters res;
+                    res.device = i;
+                    res.channelCount = 2;
+                    res.sampleFormat = paFloat32;
+                    res.suggestedLatency = info->defaultHighOutputLatency;
+                    res.hostApiSpecificStreamInfo = NULL;
+                    return res;
                 }
             }
         }
@@ -94,7 +97,7 @@ extern "C" DLLEXPORT void Mute(void** ctx) {
 }
 
 Player::Player(int32_t output_index, uint32_t buf_size, int32_t sample_rate)
-    : playQueue{ buf_size }, end_sem{0}, currentelement{ new audioContainer } {
+    : playQueue(buf_size), end_sem(0), currentelement(new audioContainer) {
     auto  outputParameters = getOutputByIndex(output_index);
 
     auto err = Pa_OpenStream(
@@ -155,11 +158,13 @@ int Player::callback(const void* input, void* output, unsigned long frameCount,
             output = static_cast<void*>(static_cast<float*>(output) +
                 read * audioContainer::samples_pre_frame);
             need_to_read -= read;
-        } else {
+        }
+        else {
             if (currentelement->is_mute() && playQueue.empty()) {
                 std::memset(output, 0, need_to_read * size_t(audioContainer::samples_pre_frame * sizeof(float)));
                 return paContinue;
-            } else {
+            }
+            else {
                 playQueue.pop(*currentelement);
                 if (currentelement->is_end()) {
                     end_sem.post();

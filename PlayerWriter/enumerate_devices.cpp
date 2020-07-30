@@ -35,7 +35,8 @@ extern "C" __declspec(dllexport) void EnumerateAudioDevices(char* result, int32_
 			std::copy(string.cbegin(), string.cend(), result);
 		}
 		*pSize = string.length();
-	} else {
+	}
+	else {
 		*pSize = 0;
 	}
 

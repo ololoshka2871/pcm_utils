@@ -76,7 +76,7 @@ uint64_t fix_overflow(float f) {
 		return INT64_MIN / 2;
 	}
 
-	return f * (float)0x4000000000000000;
+	return llroundf(f * (float)0x4000000000000000);
 }
 
 void generate_result(int16_t *stereo_data_Out, int32_t size,
