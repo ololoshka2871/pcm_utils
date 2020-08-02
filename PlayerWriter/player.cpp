@@ -114,7 +114,7 @@ Player::Player(int32_t output_index, uint32_t buf_size, int32_t sample_rate)
             void* userData) {
         return static_cast<Player*>(userData)->callback(input, output, frameCount, timeInfo, statusFlags);
     },
-        this); /* no callback, so no callback userData */
+        this);
     if (err != paNoError) {
         throw err;
     }
